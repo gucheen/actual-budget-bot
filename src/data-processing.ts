@@ -1,7 +1,7 @@
 import actualApi from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-import type { OCRResult } from './ocr'
+import type { OCRResult } from './ocr.ts'
 dayjs.extend(customParseFormat)
 
 const { PAYEE_MAP, ACCOUNT_NAME_MAP } = await import('./actual-mapping.ts')
