@@ -1,0 +1,24 @@
+{
+  "name": "actual-bot",
+  "module": "src/index.ts",
+  "main": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node --env-file .env --experimental-strip-types src/index.ts",
+    "dev": "node --env-file .env --experimental-strip-types --watch src/index.ts"
+  },
+  "devDependencies": {
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@actual-app/api": "^25.2.1",
+    "dayjs": "^1.11.13",
+    "multer": "^1.4.5-lts.1",
+    "nanoid": "^5.1.2",
+    "sharp": "^0.33.5",
+    "tesseract.js": "^6.0.0"
+  }
+}
