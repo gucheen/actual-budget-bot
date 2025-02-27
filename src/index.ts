@@ -43,7 +43,7 @@ http.createServer(function (req, res) {
       const file = (req as unknown as any).file
 
       if (!file) {
-        res.writeHead(400)
+        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify({ message: '请上传图片文件' }))
         return
       }
@@ -69,10 +69,10 @@ http.createServer(function (req, res) {
           // 处理结果
           const response = { success: add === 'ok', transactionData }
 
-          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
           res.end(JSON.stringify(response))
         } else {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
           res.end(JSON.stringify({ message: '请选择正确的支付方式并提交正确的支付截图（都应当从账单界面截取）' }))
         }
       })
