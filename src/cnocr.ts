@@ -100,7 +100,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
       amount = actual.utils.amountToInteger(Number(item.text))
       payeeRaw = arr[index - 1].text
     } else if (pushToNote) {
-      if (item.text === '收单机构') {
+      if (item.text === '收单机构' || item.text === '商户全称') {
         pushToNote = false
       } else {
         noteStrs.push(item.text)
@@ -112,6 +112,9 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
         break
       case '商品':
         pushToNote = true
+        break
+      case '商户全称':
+        fullPayee = arr[index + 1].text
         break
       case '支付方式':
         accountNameRaw = arr[index + 1].text
