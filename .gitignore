@@ -196,11 +196,8 @@ dist
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,visualstudiocode
 
 actual-data
-
 uploads
-
 *.png
-
 *.traineddata
-
 src/actual-mapping.ts
+test/*.json

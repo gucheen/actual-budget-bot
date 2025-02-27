@@ -2,81 +2,82 @@
 <html lang="zh-CN">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <title>Actual Budget Bot</title>
-  <script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background-color: #f0f0f0;
+    .alert {
+      margin-bottom: var(--pico-spacing);
+      padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
+      border-radius: var(--pico-border-radius);
+      color: var(--color);
+      background-color: var(--background-color);
+      border: 1px solid var(--background-color);
+      background-image: var(--icon);
+      background-position: center left var(--pico-form-element-spacing-vertical);
+      background-size: 1.5em auto;
+      padding-left: 3em;
     }
 
-    .upload-container {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      text-align: center;
+    .alert-danger {
+      --background-color: #ffebee;
+      --icon: var(--pico-icon-invalid);
+      --color: #b71c1c;
     }
 
-    #submit {
-      margin-top: 20px;
+    .alert-warning {
+      --background-color: #fff8e1;
+      --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='rgba(179, 78, 0, 0.999)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E");
+      --color: #994300;
     }
 
-    .btn {
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    .btn:hover {
-      background-color: #45a049;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .dropzone {
-      background: white;
-      border-radius: 5px;
-      border: 2px dashed rgb(0, 135, 247);
-      border-image: none;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
+    .alert-success {
+      --background-color: #e8f5e9;
+      --icon: var(--pico-icon-valid);
+      --color: #1b5e20;
     }
   </style>
 </head>
 
 <body>
-  <div class="upload-container">
-    <h1>上传支付结果截屏图片</h1>
-    <form id="upload-form" action="/ocr" method="post" enctype="multipart/form-data" class="dropzone">
+  <header class="container">
+    <nav>
+      <ul>
+        <li>
+          <h1>Actual Budget Bot</h1>
+        </li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <!-- <div class="alert alert-success" role="alert">Great success!</div> -->
+    <form id="upload-form" action="/ocr" method="post" enctype="multipart/form-data">
+      <fieldset>
+        <legend>选择支付方式</legend>
+        <input type="radio" id="wechat" name="paymentType" value="wechat" checked />
+        <label htmlFor="wechat">微信支付</label>
+        <input type="radio" id="alipay" name="paymentType" value="alipay" />
+        <label htmlFor="alipay">支付宝</label>
+        <input type="radio" id="unionpayquickpass" name="paymentType" value="unionpayquickpass" />
+        <label htmlFor="unionpayquickpass">云闪付</label>
+      </fieldset>
+      <fieldset>
+        <label>
+          选择图片文件
+          <input type="file" class="custom-file-input" id="fileInput" name="image" accept="image/*" required>
+        </label>
+      </fieldset>
+      <button id="submit" type="submit" class="btn">上传并识别</button>
     </form>
-    <button id="submit" type="submit" class="btn">上传并识别</button>
-  </div>
-  <script>
-    Dropzone.options.uploadForm = {
-      paramName: 'image',
-      maxFilesize: 20,
-      acceptedFiles: 'image/*',
-      autoProcessQueue: false,
-    }
-    document.getElementById('submit').addEventListener('click', function (e) {
-      e.preventDefault()
-      Dropzone.forElement('#upload-form').processQueue()
-    })
-  </script>
+  </main>
+  <footer class="container">
+    <hgroup>
+      <h2>怎么使用</h2>
+      <p>进入到你的支付应用（支付宝、微信）的账单页面，点击某条支付记录，在账单详情页面截图，然后上传到这里。</p>
+    </hgroup>
+  </footer>
 </body>
 
 </html>

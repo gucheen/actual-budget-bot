@@ -5,8 +5,9 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "node --env-file .env --experimental-strip-types src/index.ts",
-    "dev": "node --env-file .env --experimental-strip-types --watch src/index.ts"
+    "start": "node --env-file .env --experimental-transform-types src/index.ts",
+    "dev": "node --env-file .env --experimental-transform-types --watch src/index.ts",
+    "test": "node --env-file .env --experimental-transform-types test/ocr.test.ts"
   },
   "devDependencies": {
     "@types/multer": "^1.4.12",
@@ -16,6 +17,8 @@
   "dependencies": {
     "@actual-app/api": "^25.2.1",
     "dayjs": "^1.11.13",
+    "formdata-node": "^6.0.3",
+    "got": "^14.4.6",
     "multer": "^1.4.5-lts.1",
     "nanoid": "^5.1.2",
     "sharp": "^0.33.5",
