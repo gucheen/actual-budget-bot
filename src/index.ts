@@ -1,95 +1,67 @@
-import http, { IncomingMessage } from 'http'
-import fs from 'fs'
+import Fastify from 'fastify'
 import path from 'path'
-import multer from 'multer' // 引入multer模块
 import { nanoid } from 'nanoid'
+import fs from 'node:fs'
+import { pipeline } from 'node:stream/promises'
+import multipart from '@fastify/multipart'
 import { addActualTransaction } from './actual.ts'
 import { cnocr } from './cnocr.ts'
 import type { PaymentType } from './constants.ts'
 
-const port = process.env.PORT || 8000
+const port = Number(process.env.PORT) || 8000
 
-// 配置multer存储
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: path.join(import.meta.dirname, '../uploads/'),
-    filename(req, file, callback) {
-      callback(null, nanoid() + '_' + file.originalname)
-    },
-  })
+const app = Fastify({
+  logger: true,
 })
 
-http.createServer(function (req, res) {
-  if (req.method === 'POST' && req.url === '/ocr') {
-    // 使用multer处理文件上传
-    upload.single('image')(req as unknown as any, res as unknown as any, function (err) {
-      if (err) {
-        res.writeHead(500)
-        res.end(JSON.stringify(err))
-        return
-      }
+app.register(multipart)
 
-      const request = req as unknown as IncomingMessage & { body: { paymentType: PaymentType } }
+// 处理OCR请求
+app.post('/ocr', async (req, reply) => {
+  const data = await req.file()
 
-      if (!request.body.paymentType) {
-        res.writeHead(400)
-        res.end(JSON.stringify({ message: '请选择支付方式' }))
-        return
-      }
-
-      console.log('req.body', request.body)
-
-      // 处理上传的文件
-      const file = (req as unknown as any).file
-
-      if (!file) {
-        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify({ message: '请上传图片文件' }))
-        return
-      }
-
-      const filePath = file.path
-
-      fs.readFile(filePath, async function (err, data) {
-        if (err) {
-          res.writeHead(500)
-          res.end(JSON.stringify(err))
-          return
-        }
-
-        // 使用OCR处理图片
-        const transactionData = await cnocr({
-          image: data,
-          paymentType: request.body.paymentType,
-        })
-        if (transactionData) {
-          // 向 actual 添加实际交易数据
-          const add = await addActualTransaction(transactionData)
-
-          // 处理结果
-          const response = { success: add === 'ok', transactionData }
-
-          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify(response))
-        } else {
-          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify({ message: '请选择正确的支付方式并提交正确的支付截图（都应当从账单界面截取）' }))
-        }
-      })
-    })
-    return
+  if (!data?.fields.paymentType) {
+    return reply.code(400).send({ message: '请选择支付方式' })
   }
 
-  // 处理GET请求
-  fs.readFile(path.join(import.meta.dirname, 'index.html'), function (err, data) {
-    if (err) {
-      res.writeHead(404)
-      res.end(JSON.stringify(err))
-      return
+  if (!data.file) {
+    return reply.code(400).send({ message: '请上传图片文件' })
+  }
+
+  await pipeline(data.file, fs.createWriteStream(path.join(import.meta.dirname, '../uploads/', nanoid() + '_' + data.filename)))
+
+  try {
+    const transactionData = await cnocr({
+      image: await data.toBuffer(),
+      paymentType: data.fields.paymentType as unknown as PaymentType,
+    })
+
+    if (transactionData) {
+      const add = await addActualTransaction(transactionData)
+      return reply.send({
+        success: add === 'ok',
+        transactionData,
+      })
+    } else {
+      return reply.code(400).send({
+        message: '请选择正确的支付方式并提交正确的支付截图（都应当从账单界面截取）'
+      })
     }
-    res.writeHead(200, { 'Content-Type': 'text/html' })
-    res.end(data)
-  })
-}).listen(port, () => {
+  } catch (err) {
+    return reply.code(500).send(err)
+  }
+})
+
+// 处理GET请求
+app.get('/', async (req, reply) => {
+  try {
+    const data = await fs.promises.readFile(path.join(import.meta.dirname, 'index.html'))
+    return reply.type('text/html').send(data)
+  } catch (err) {
+    return reply.status(404).send(err)
+  }
+})
+
+app.listen({ port }, () => {
   console.log(`Listening on port ${port}`)
 })
