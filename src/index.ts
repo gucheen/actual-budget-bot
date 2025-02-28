@@ -24,10 +24,6 @@ app.post('/ocr', async (req, reply) => {
     return reply.code(400).send({ message: '请上传图片文件' })
   }
 
-  if (!data?.fields.paymentType) {
-    return reply.code(400).send({ message: '请选择支付方式' })
-  }
-
   const paymentType = (data.fields.paymentType as MultipartValue).value as unknown as PaymentType
 
   const filepath = path.join(import.meta.dirname, '../uploads/', nanoid() + '_' + data.filename)

@@ -62,7 +62,9 @@
     <form id="upload-form" hx-post="/ocr" hx-encoding="multipart/form-data" hx-target="#notice">
       <fieldset>
         <legend>选择支付方式</legend>
-        <input type="radio" id="wechat" name="paymentType" value="wechat" checked />
+        <input type="radio" id="wechat" name="paymentType" value="auto" checked />
+        <label htmlFor="wechat">自动识别</label>
+        <input type="radio" id="wechat" name="paymentType" value="wechat" />
         <label htmlFor="wechat">微信支付</label>
         <input type="radio" id="alipay" name="paymentType" value="alipay" />
         <label htmlFor="alipay">支付宝</label>

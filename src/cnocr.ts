@@ -210,6 +210,19 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
   return transactionData
 }
 
+const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType|null => {
+  for (const item of ocrData) {
+    if (item.text === '交易单号') {
+      return PaymentType.Wechat
+    } else if (item.text === '订单号') {
+      return PaymentType.Alipay
+    } else if (item.text === '订单编号') {
+      return PaymentType.UnionPayQuickPass
+    }
+  }
+  return null
+}
+
 export const cnocr = async (args: {
   image: Buffer | string
   paymentType: PaymentType
@@ -233,11 +246,20 @@ export const cnocr = async (args: {
   }).json()
   console.log('cnocr results >>>')
   console.log(response)
-  if (args.paymentType === PaymentType.Alipay) {
+  let paymentType: PaymentType = args.paymentType
+  if (typeof paymentType === 'undefined' || paymentType === null || paymentType === PaymentType.Auto) {
+    const determinePaymentType = determinePaymentTypeFromOCR(response.results)
+    if (determinePaymentType) {
+      paymentType = determinePaymentType
+    } else {
+      throw new Error('无法自动识别支付类型')
+    }
+  }
+  if (paymentType === PaymentType.Alipay) {
     return processAlipayOCRResults(response.results)
-  } else if (args.paymentType === PaymentType.Wechat) {
+  } else if (paymentType === PaymentType.Wechat) {
     return processWechatOCRResults(response.results)
-  } else if (args.paymentType === PaymentType.UnionPayQuickPass) {
+  } else if (paymentType === PaymentType.UnionPayQuickPass) {
     return processQuickPassOCRResults(response.results)
   }
   return null
