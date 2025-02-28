@@ -52,24 +52,23 @@
           <h1>Actual Budget Bot</h1>
         </li>
       </ul>
-      <ul>
-        <li><small hx-get="/cnocr-status" hx-trigger="load delay:1s">CnOCR 连接中</small></li>
-      </ul>
     </nav>
   </header>
   <main class="container">
     <div id="notice"></div>
-    <form id="upload-form" hx-post="/ocr" hx-encoding="multipart/form-data" hx-target="#notice">
+    <small hx-get="/cnocr-status" hx-trigger="load delay:1s">CnOCR 连接中</small>
+    <form id="upload-form" hx-post="/ocr" hx-encoding="multipart/form-data" hx-target="#notice" hx-indicator="#progress">
+      <progress id="progress" value="0" max="100" class="htmx-indicator"></progress>
       <fieldset>
-        <legend>选择支付方式</legend>
-        <input type="radio" id="wechat" name="paymentType" value="auto" checked />
-        <label htmlFor="wechat">自动识别</label>
-        <input type="radio" id="wechat" name="paymentType" value="wechat" />
-        <label htmlFor="wechat">微信支付</label>
-        <input type="radio" id="alipay" name="paymentType" value="alipay" />
-        <label htmlFor="alipay">支付宝</label>
-        <input type="radio" id="unionpayquickpass" name="paymentType" value="unionpayquickpass" />
-        <label htmlFor="unionpayquickpass">云闪付</label>
+        <label>
+          选择支付方式
+          <select name="paymentType" aria-label="选择支付方式" required>
+            <option value="auto">自动识别</option>
+            <option value="wechat">微信支付</option>
+            <option value="alipay">支付宝</option>
+            <option value="unionpayquickpass">云闪付</option>
+          </select>
+        </label>
       </fieldset>
       <fieldset>
         <label>
@@ -77,7 +76,6 @@
           <input type="file" class="custom-file-input" id="fileInput" name="image" accept="image/*" required>
         </label>
       </fieldset>
-      <progress id="progress" value="0" max="100"></progress>
       <button id="submit" type="submit" class="btn">上传并识别</button>
     </form>
   </main>
