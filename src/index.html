@@ -89,6 +89,12 @@
     htmx.on('#upload-form', 'htmx:xhr:progress', function (evt) {
       htmx.find('#progress').setAttribute('value', evt.detail.loaded / evt.detail.total * 100)
     })
+    htmx.on('#upload-form', 'htmx:beforeRequest', function (evt) {
+      htmx.find('#submit').setAttribute('aria-busy', "true")
+    })
+    htmx.on('#upload-form', 'htmx:afterRequest', function (evt) {
+      htmx.find('#submit').removeAttribute('aria-busy')
+    })
     htmx.on('htmx:responseError', (event) => {
       try {
         const repsonse = JSON.parse(event.detail.xhr.responseText)
