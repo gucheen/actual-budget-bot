@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4"
+    integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+"
+    crossorigin="anonymous"></script>
   <title>Actual Budget Bot</title>
   <style>
     .alert {
@@ -52,8 +55,8 @@
     </nav>
   </header>
   <main class="container">
-    <!-- <div class="alert alert-success" role="alert">Great success!</div> -->
-    <form id="upload-form" action="/ocr" method="post" enctype="multipart/form-data">
+    <div id="notice"></div>
+    <form id="upload-form" hx-post="/ocr" hx-encoding="multipart/form-data" hx-target="#notice">
       <fieldset>
         <legend>选择支付方式</legend>
         <input type="radio" id="wechat" name="paymentType" value="wechat" checked />
@@ -69,6 +72,7 @@
           <input type="file" class="custom-file-input" id="fileInput" name="image" accept="image/*" required>
         </label>
       </fieldset>
+      <progress id="progress" value="0" max="100"></progress>
       <button id="submit" type="submit" class="btn">上传并识别</button>
     </form>
   </main>
@@ -78,6 +82,25 @@
       <p>进入到你的支付应用（支付宝、微信）的账单页面，点击某条支付记录，在账单详情页面截图，然后上传到这里。</p>
     </hgroup>
   </footer>
+  <script>
+    htmx.on('#upload-form', 'htmx:xhr:progress', function (evt) {
+      htmx.find('#progress').setAttribute('value', evt.detail.loaded / evt.detail.total * 100)
+    })
+    htmx.on('htmx:responseError', (event) => {
+      try {
+        const repsonse = JSON.parse(event.detail.xhr.responseText)
+        const alert = document.createElement('div')
+        alert.classList.add('alert', 'alert-danger')
+        alert.innerText = repsonse.message
+        document.getElementById('notice').replaceChildren(alert)
+      } catch(error) {
+        const alert = document.createElement('div')
+        alert.classList.add('alert', 'alert-danger')
+        alert.innerText = '出了点问题'
+        document.getElementById('notice').replaceChildren(alert)
+      }
+    })
+  </script>
 </body>
 
 </html>
