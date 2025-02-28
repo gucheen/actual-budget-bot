@@ -1,5 +1,6 @@
 import got from 'got'
 import { FormData, File } from 'formdata-node'
+import { fileFromPath } from 'formdata-node/file-from-path'
 import actual from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
@@ -210,7 +211,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
 }
 
 export const cnocr = async (args: {
-  image: Buffer
+  image: Buffer|string
   paymentType: PaymentType
 }): Promise<{
   payee: string
@@ -222,7 +223,11 @@ export const cnocr = async (args: {
   importID: string
 }|null> => {
   const form = new FormData()
-  form.set('image', new File([args.image], 'image.png'))
+  if (Buffer.isBuffer(args.image)) {
+    form.set('image', new File([args.image], 'image.png'))
+  } else if (typeof args.image === 'string' && args.image.length > 0) {
+    form.set('image', await fileFromPath(args.image))
+  }
   const response: { status_code: number, results: CNOCRData[] } = await got.post(new URL('/ocr', process.env.cnocr_server).toString(), {
     body: form as unknown as any,
   }).json()

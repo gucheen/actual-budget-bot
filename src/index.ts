@@ -3,7 +3,7 @@ import path from 'path'
 import { nanoid } from 'nanoid'
 import fs from 'node:fs'
 import { pipeline } from 'node:stream/promises'
-import multipart from '@fastify/multipart'
+import multipart, { type MultipartValue } from '@fastify/multipart'
 import { addActualTransaction } from './actual.ts'
 import { cnocr } from './cnocr.ts'
 import type { PaymentType } from './constants.ts'
@@ -20,27 +20,32 @@ app.register(multipart)
 app.post('/ocr', async (req, reply) => {
   const data = await req.file()
 
+  if (!data) {
+    return reply.code(400).send({ message: '请上传图片文件' })
+  }
+
   if (!data?.fields.paymentType) {
     return reply.code(400).send({ message: '请选择支付方式' })
   }
 
-  if (!data.file) {
-    return reply.code(400).send({ message: '请上传图片文件' })
-  }
+  const paymentType = (data.fields.paymentType as MultipartValue).value as unknown as PaymentType
 
-  await pipeline(data.file, fs.createWriteStream(path.join(import.meta.dirname, '../uploads/', nanoid() + '_' + data.filename)))
+  const filepath = path.join(import.meta.dirname, '../uploads/', nanoid() + '_' + data.filename)
+  await pipeline(data.file, fs.createWriteStream(filepath))
 
   try {
     const transactionData = await cnocr({
-      image: await data.toBuffer(),
-      paymentType: data.fields.paymentType as unknown as PaymentType,
+      image: filepath,
+      paymentType,
     })
 
     if (transactionData) {
       const add = await addActualTransaction(transactionData)
-      return reply.send({
-        success: add === 'ok',
-        transactionData,
+      if (add) {
+        return reply.type('text/html').send(`<div class="alert alert-success" role="alert">添加成功，交易日期: ${transactionData.date}，商户: ${transactionData.payee}</div>`)
+      }
+      return reply.code(500).send({
+        message: '发生了一些未知问题',
       })
     } else {
       return reply.code(400).send({
@@ -62,6 +67,6 @@ app.get('/', async (req, reply) => {
   }
 })
 
-app.listen({ port }, () => {
+app.listen({ host: '0.0.0.0', port }, () => {
   console.log(`Listening on port ${port}`)
 })
