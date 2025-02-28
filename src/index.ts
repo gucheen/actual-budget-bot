@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import { pipeline } from 'node:stream/promises'
 import multipart, { type MultipartValue } from '@fastify/multipart'
 import { addActualTransaction } from './actual.ts'
-import { cnocr } from './cnocr.ts'
+import { cnocr, getCnocrServiceStatus } from './cnocr.ts'
 import type { PaymentType } from './constants.ts'
 
 const port = Number(process.env.PORT) || 8000
@@ -65,6 +65,11 @@ app.get('/', async (req, reply) => {
   } catch (err) {
     return reply.status(404).send(err)
   }
+})
+
+app.get('/cnocr-status', async (req, reply) => {
+  const result = await getCnocrServiceStatus()
+  reply.send(result.up ? 'CnOCR 服务正常' : 'CnOCR 未启动')
 })
 
 app.listen({ host: '0.0.0.0', port }, () => {

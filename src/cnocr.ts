@@ -211,7 +211,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
 }
 
 export const cnocr = async (args: {
-  image: Buffer|string
+  image: Buffer | string
   paymentType: PaymentType
 }): Promise<{
   payee: string
@@ -221,7 +221,7 @@ export const cnocr = async (args: {
   note: string
   fullPayee: string
   importID: string
-}|null> => {
+} | null> => {
   const form = new FormData()
   if (Buffer.isBuffer(args.image)) {
     form.set('image', new File([args.image], 'image.png'))
@@ -241,4 +241,16 @@ export const cnocr = async (args: {
     return processQuickPassOCRResults(response.results)
   }
   return null
+}
+
+export const getCnocrServiceStatus = async () => {
+  try {
+    const result = await got.get(new URL('/', process.env.cnocr_server).toString()).json()
+    if (result.message === 'Welcome to CnOCR Server!') {
+      return { up: true }
+    }
+    return { up: false }
+  } catch(error) {
+    return { up: false }
+  }
 }
