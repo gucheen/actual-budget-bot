@@ -198,6 +198,7 @@ dist
 actual-data
 uploads
 *.png
+!preview.png
 *.traineddata
 src/actual-mapping.ts
 test/*.json

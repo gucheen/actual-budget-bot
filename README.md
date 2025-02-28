@@ -17,3 +17,7 @@ actual-budget-bot 一个自动导入交易信息到 actual budget 的应用。�
 - 微信支付：`交易单号`
 - 支付宝: `订单号`
 - 云闪付: `订单编号`
+
+### 界面预览
+
+![actual-budget-bot 界面](preview.png)
