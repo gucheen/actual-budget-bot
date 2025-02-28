@@ -4,7 +4,7 @@ FROM node:${NODE_VERSION}-alpine
 
 ENV TZ=Asia/Shanghai
 # Use production node environment by default.
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 WORKDIR /usr/src/app
 
@@ -27,4 +27,4 @@ COPY . .
 EXPOSE 8000
 
 # Run the application.
-CMD node --env-file .env --experimental-transform-types src/index.ts
+CMD ["npm", "start"]
