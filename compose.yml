@@ -1,0 +1,18 @@
+services:
+  bot:
+    build:
+      context: .
+    environment:
+      NODE_ENV: production
+    volumes:
+      - .env:/usr/src/app/.env
+      - ./src/actual-mapping.ts:/usr/src/app/src/actual-mapping.ts
+      - ./actual-data:/usr/src/app/actual-data
+      - ./uploads:/usr/src/app/uploads
+    ports:
+      - 8000:8000
+  cnocr:
+    image: breezedeus/cnocr-arm64:latest
+    environment:
+      HF_ENDPOINT: https://hf-mirror.com
+    command: bash -c "pip install -U cnocr cnstd --index-url https://mirrors.aliyun.com/pypi/simple && cnocr serve -H 0.0.0.0 -p 8501"
