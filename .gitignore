@@ -195,8 +195,10 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node,macos,visualstudiocode
 
-actual-data
-uploads
+actual-data/*
+!actual-data/.gitkeep
+uploads/*
+!uploads/.gitkeep
 *.png
 !preview.png
 *.traineddata
