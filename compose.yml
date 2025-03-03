@@ -5,10 +5,10 @@ services:
     environment:
       NODE_ENV: production
     volumes:
-      - .env:/usr/src/app/.env
-      - ./src/actual-mapping.ts:/usr/src/app/src/actual-mapping.ts
-      - ./actual-data:/usr/src/app/actual-data
-      - ./uploads:/usr/src/app/uploads
+      - .env:/home/node/app/.env
+      - ./src/actual-mapping.ts:/home/node/app/src/actual-mapping.ts
+      - ./actual-data:/home/node/app/actual-data
+      - ./uploads:/home/node/app/uploads
     ports:
       - 8000:8000
   cnocr:
