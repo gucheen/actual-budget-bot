@@ -6,7 +6,7 @@ ENV TZ=Asia/Shanghai
 # Use production node environment by default.
 ENV NODE_ENV=production
 
-WORKDIR /usr/src/app
+WORKDIR /home/node/app
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.npm to speed up subsequent builds.
