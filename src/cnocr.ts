@@ -38,10 +38,12 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
       payeeRaw = arr[index - 1].text
     }
     switch (item.text) {
+      case '创建时间':
       case '支付时间':
         date = dayjs(arr[index + 1].text, 'YYYY-MM-DDHH:mm:ss').format('YYYY-MM-DD')
         break
       case '付款方式':
+      case '退款方式':
         accountNameRaw = typeof arr[index + 1].text === 'string' ? arr[index + 1].text.replace('>', '') : ''
         break
       case '商品说明':
