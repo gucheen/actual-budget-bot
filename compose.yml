@@ -1,7 +1,6 @@
 services:
-  bot:
-    build:
-      context: .
+  app:
+    image: gucheen/actual-budget-bot:nightly
     environment:
       NODE_ENV: production
     volumes:
