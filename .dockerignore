@@ -31,5 +31,5 @@ actual-data/**/*
 dist
 uploads/**/*
 .env
-**/actual-mapping.ts
+**/mapping.json
 preview.png

@@ -202,5 +202,5 @@ uploads/*
 *.png
 !preview.png
 *.traineddata
-src/actual-mapping.ts
+src/mapping.json
 test/*.json

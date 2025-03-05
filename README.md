@@ -26,7 +26,7 @@ actual-budget-bot 一个自动导入交易信息到 actual budget 的应用。�
 
 1. 下载 `compose.yml`
 2. 复制 `.env.example` 为 `.env`，修改变量值，注意 `cnocr_server` 在 Docker compose 环境下应该设置为 `http://cnocr:8501`
-3. 新建 `actual-mapping.ts`，配置账户、支付对象映射
+3. （可选）复制 `mapping.exmaple.json` 为 `mapping.json`，配置账户、支付对象映射
 4. 运行 `docker compose up -d`
 5. 访问 `http://localhost:8000` 或者 `http://你的ip:8000`
 
@@ -36,7 +36,7 @@ actual-budget-bot 一个自动导入交易信息到 actual budget 的应用。�
 2. clone 项目到本地
 3. `npm install`
 4. 复制 `.env.example` 为 `.env`，修改变量值
-5. 新建 `actual-mapping.ts`，配置账户、支付对象映射
+5. （可选）复制 `mapping.exmaple.json` 为 `mapping.json`，配置账户、支付对象映射
 6. 运行 `npm start`
 7. 访问 `http://localhost:8000` 或者 `http://你的ip:8000`
 
