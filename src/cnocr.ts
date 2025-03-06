@@ -1,4 +1,3 @@
-import got from 'got'
 import { FormData, File } from 'formdata-node'
 import { fileFromPath } from 'formdata-node/file-from-path'
 import actual from '@actual-app/api'
@@ -263,9 +262,10 @@ export const cnocr = async (args: {
   } else if (typeof args.image === 'string' && args.image.length > 0) {
     form.set('image', await fileFromPath(args.image))
   }
-  const response: { status_code: number, results: CNOCRData[] } = await got.post(new URL('/ocr', process.env.cnocr_server).toString(), {
+  const response: { status_code: number, results: CNOCRData[] } = await (await fetch(new URL('/ocr', process.env.cnocr_server).toString(), {
+    method: 'POST',
     body: form as unknown as any,
-  }).json()
+  })).json()
   console.log('cnocr results >>>')
   console.log(response)
   let paymentType: PaymentType = args.paymentType
@@ -289,7 +289,7 @@ export const cnocr = async (args: {
 
 export const getCnocrServiceStatus = async () => {
   try {
-    const result = await got.get(new URL('/', process.env.cnocr_server).toString()).json()
+    const result = await (await fetch(new URL('/', process.env.cnocr_server).toString())).json()
     if (result.message === 'Welcome to CnOCR Server!') {
       return { up: true }
     }
