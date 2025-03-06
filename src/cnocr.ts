@@ -65,6 +65,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
       case '退款方式':
         accountNameRaw = typeof arr[index + 1].text === 'string' ? arr[index + 1].text.replace('>', '') : ''
         break
+      case '缴费说明':
       case '商品说明':
         note = arr[index + 1].text
         break
