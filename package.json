@@ -7,18 +7,21 @@
   "scripts": {
     "start": "node --env-file .env --experimental-transform-types src/index.ts",
     "dev": "node --env-file .env --experimental-transform-types --watch src/index.ts",
-    "test": "node --env-file .env --experimental-transform-types test/ocr.test.ts"
+    "test": "node --env-file .env --experimental-transform-types test/ocr.test.ts",
+    "reconcil": "clear && node --env-file .env --experimental-transform-types src/reconcil.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.13.5",
-    "typescript": "^5.7.3"
+    "@types/node": "^22.13.9",
+    "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@actual-app/api": "^25.2.1",
+    "@actual-app/api": "^25.3.1",
     "@fastify/multipart": "^9.0.3",
+    "csv-parser": "^3.2.0",
     "dayjs": "^1.11.13",
     "fastify": "^5.2.1",
     "formdata-node": "^6.0.3",
+    "inquirer": "^12.4.2",
     "nanoid": "^5.1.2"
   }
 }

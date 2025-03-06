@@ -204,3 +204,4 @@ uploads/*
 *.traineddata
 src/mapping.json
 test/*.json
+*.csv
