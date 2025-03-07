@@ -247,6 +247,22 @@ const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType|null => 
   return null
 }
 
+export const postImageToCNOcr = async (image: Buffer|string): Promise<CNOCRData[]> => {
+  const form = new FormData()
+  if (Buffer.isBuffer(image)) {
+    form.set('image', new File([image], 'image.png'))
+  } else if (typeof image === 'string' && image.length > 0) {
+    form.set('image', await fileFromPath(image))
+  }
+  const response: { status_code: number, results: CNOCRData[] } = await (await fetch(new URL('/ocr', process.env.cnocr_server).toString(), {
+    method: 'POST',
+    body: form as unknown as any,
+  })).json()
+  console.log('cnocr results >>>')
+  console.log(response)
+  return response.results
+}
+
 export const cnocr = async (args: {
   image: Buffer | string
   paymentType?: PaymentType
@@ -259,21 +275,10 @@ export const cnocr = async (args: {
   fullPayee: string
   importID: string
 } | null> => {
-  const form = new FormData()
-  if (Buffer.isBuffer(args.image)) {
-    form.set('image', new File([args.image], 'image.png'))
-  } else if (typeof args.image === 'string' && args.image.length > 0) {
-    form.set('image', await fileFromPath(args.image))
-  }
-  const response: { status_code: number, results: CNOCRData[] } = await (await fetch(new URL('/ocr', process.env.cnocr_server).toString(), {
-    method: 'POST',
-    body: form as unknown as any,
-  })).json()
-  console.log('cnocr results >>>')
-  console.log(response)
+  const results = await postImageToCNOcr(args.image)
   let paymentType: PaymentType|undefined = args.paymentType
   if (typeof paymentType === 'undefined' || paymentType === null || paymentType === PaymentType.Auto) {
-    const determinePaymentType = determinePaymentTypeFromOCR(response.results)
+    const determinePaymentType = determinePaymentTypeFromOCR(results)
     if (determinePaymentType) {
       paymentType = determinePaymentType
     } else {
@@ -281,11 +286,11 @@ export const cnocr = async (args: {
     }
   }
   if (paymentType === PaymentType.Alipay) {
-    return processAlipayOCRResults(response.results)
+    return processAlipayOCRResults(results)
   } else if (paymentType === PaymentType.Wechat) {
-    return processWechatOCRResults(response.results)
+    return processWechatOCRResults(results)
   } else if (paymentType === PaymentType.UnionPayQuickPass) {
-    return processQuickPassOCRResults(response.results)
+    return processQuickPassOCRResults(results)
   }
   return null
 }
