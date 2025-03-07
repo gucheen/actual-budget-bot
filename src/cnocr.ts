@@ -249,7 +249,7 @@ const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType|null => 
 
 export const cnocr = async (args: {
   image: Buffer | string
-  paymentType: PaymentType
+  paymentType?: PaymentType
 }): Promise<{
   payee: string
   amount: number
@@ -271,7 +271,7 @@ export const cnocr = async (args: {
   })).json()
   console.log('cnocr results >>>')
   console.log(response)
-  let paymentType: PaymentType = args.paymentType
+  let paymentType: PaymentType|undefined = args.paymentType
   if (typeof paymentType === 'undefined' || paymentType === null || paymentType === PaymentType.Auto) {
     const determinePaymentType = determinePaymentTypeFromOCR(response.results)
     if (determinePaymentType) {
