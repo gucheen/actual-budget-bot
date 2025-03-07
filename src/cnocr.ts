@@ -204,6 +204,9 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
       case '订单时间':
         date = dayjs(arr[index + 1].text, 'YYYY年M月D日 HH:mm:ss').format('YYYY-MM-DD')
         break
+      case '订单描述':
+        note = arr[index + 1].text
+        break
       case '订单编号':
         importID = arr[index + 1].text
         break
