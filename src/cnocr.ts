@@ -57,7 +57,7 @@ const seekMultilinePayee = (startIndex: number, ocrData: CNOCRData[]): string =>
       payeeRaw = ocrData[seekIndex - 1].text + payeeRaw
       seekIndex = seekIndex - 1
     } else {
-      seekIndex = -1
+      break
     }
   }
   return payeeRaw
