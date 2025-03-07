@@ -32,6 +32,37 @@ interface CNOCRData {
   position: [number, number][]
 }
 
+/**
+ * 由于支付对象（商家）名称可能会很长导致折行，并且也有可能因为符号的存在导致OCR识别为多个区块
+ * 因此这里需要用反向查找的方式来寻找完整的支付对象（商家）的名称
+ * 首个锚点是支付金额的前一个区块（当前主要支付平台的样式都是支付对象名称 换行 支付金额），之后继续向前查找
+ * 如果前一个区块的上边 Y 轴坐标和当前区块的上边 Y 轴坐标相距小于阈值 10，那么就认为是同一行的文本
+ * block1 block2
+ * 如果前一个区块的下边 Y 轴坐标和当前区块的上边 Y 轴坐标相距小于阈值 20，那么就认为是连续的多行文本
+ * block 3
+ * block 4
+ * 这两种情况将对应区块按正序拼接作为完整的商家名称
+ * @param startIndex - 从哪个索引开始寻找
+ * @param ocrData - OCR数据
+ * @returns 完整的支付对象（商家）的名称
+ */
+const seekMultilinePayee = (startIndex: number, ocrData: CNOCRData[]): string => {
+  let payeeRaw = ''
+  let seekIndex = startIndex
+  payeeRaw = ocrData[seekIndex].text
+  while (seekIndex >= 0) {
+    const isSameLine = Math.abs(ocrData[seekIndex - 1].position[0][1] - ocrData[seekIndex].position[0][1]) < 10
+    const isSameParagraph = Math.abs(ocrData[seekIndex - 1].position[3][1] - ocrData[seekIndex].position[0][1]) < 20
+    if (isSameLine || isSameParagraph) {
+      payeeRaw = ocrData[seekIndex - 1].text + payeeRaw
+      seekIndex = seekIndex - 1
+    } else {
+      seekIndex = -1
+    }
+  }
+  return payeeRaw
+}
+
 const processAlipayOCRResults = (ocrData: CNOCRData[]): {
   payee: string
   amount: number
@@ -50,10 +81,13 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     importID = ''
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+    // 首个符合金额数字规则的区块作为交易金额处理
     if (/^-?[\d.]+$/.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text))
-      payeeRaw = arr[index - 1].text
+      // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
+      const seekIndex = index - 1
+      payeeRaw = seekMultilinePayee(seekIndex, arr)
     }
     switch (item.text) {
       case '创建时间':
@@ -117,10 +151,13 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
   let pushToNote = false
   const noteStrs: string[] = []
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+    // 首个符合金额数字规则的区块作为交易金额处理
     if (/^-?[\d.]+$/.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text))
-      payeeRaw = arr[index - 1].text
+      // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
+      const seekIndex = index - 1
+      payeeRaw = seekMultilinePayee(seekIndex, arr)
     } else if (pushToNote) {
       if (item.text === '收单机构' || item.text === '商户全称') {
         pushToNote = false
@@ -189,10 +226,13 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     importID = ''
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+    // 首个符合金额数字规则的区块作为交易金额处理
     if (/^-?¥?[\d.]+$/.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text.replace('¥', '')))
-      payeeRaw = arr[index - 1].text
+      // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
+      const seekIndex = index - 1
+      payeeRaw = seekMultilinePayee(seekIndex, arr)
     }
     switch (item.text) {
       case '付款方式':
@@ -234,7 +274,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
   return transactionData
 }
 
-const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType|null => {
+const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType | null => {
   for (const item of ocrData) {
     if (item.text === '交易单号') {
       return PaymentType.Wechat
@@ -247,7 +287,7 @@ const determinePaymentTypeFromOCR = (ocrData: CNOCRData[]): PaymentType|null => 
   return null
 }
 
-export const postImageToCNOcr = async (image: Buffer|string): Promise<CNOCRData[]> => {
+export const postImageToCNOcr = async (image: Buffer | string): Promise<CNOCRData[]> => {
   const form = new FormData()
   if (Buffer.isBuffer(image)) {
     form.set('image', new File([image], 'image.png'))
@@ -276,7 +316,7 @@ export const cnocr = async (args: {
   importID: string
 } | null> => {
   const results = await postImageToCNOcr(args.image)
-  let paymentType: PaymentType|undefined = args.paymentType
+  let paymentType: PaymentType | undefined = args.paymentType
   if (typeof paymentType === 'undefined' || paymentType === null || paymentType === PaymentType.Auto) {
     const determinePaymentType = determinePaymentTypeFromOCR(results)
     if (determinePaymentType) {
@@ -302,7 +342,7 @@ export const getCnocrServiceStatus = async () => {
       return { up: true }
     }
     return { up: false }
-  } catch(error) {
+  } catch (error) {
     return { up: false }
   }
 }
