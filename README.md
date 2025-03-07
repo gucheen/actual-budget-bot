@@ -51,6 +51,7 @@ actual-budget-bot 一个自动导入交易信息到 actual budget 的应用。�
 3. `npm run reconcil`
 4. 根据提示选择支付应用、输入账单 CSV 文件路径
 5. 检查对账结果
+  [![asciicast](https://asciinema.org/a/706897.svg)](https://asciinema.org/a/706897)
 
 ## 界面预览
 
