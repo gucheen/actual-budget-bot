@@ -227,9 +227,9 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.4).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
-    if (/^-?¥?[\d.]+$/.test(item.text) && !firstAmountCatch) {
+    if (/^-?[¥￥]?[\d.]+$/.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text.replace('¥', '')))
+      amount = actual.utils.amountToInteger(Number(item.text.replace(/[¥￥]/, '')))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
