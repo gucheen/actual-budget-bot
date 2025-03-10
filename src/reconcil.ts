@@ -5,26 +5,10 @@ import path from 'path'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import inquirer from 'inquirer'
+import { initActual } from './actual.ts'
+import type { UUID, Transaction } from './actual.ts'
 
 dayjs.extend(customParseFormat)
-
-type UUID = string
-
-interface Transaction {
-  id?: UUID
-  account: UUID
-  date: string
-  amount?: number
-  payee?: UUID
-  payee_name?: string
-  imported_payee?: string
-  category?: UUID
-  notes?: string
-  imported_id?: string
-  transfer_id?: string
-  cleared?: boolean
-  subtransactions?: Transaction[]
-}
 
 let ACCOUNT_NAME_MAP: {
   [key: string]: string
@@ -44,18 +28,6 @@ try {
 
 function createKeyForTransaction(transaction: Transaction) {
   return `${transaction.date}_${transaction.account}_${transaction.amount}`
-}
-
-async function initActual() {
-  await actualApi.init({
-    dataDir: './actual-data',
-    serverURL: process.env.actual_server,
-    password: process.env.actual_password,
-  })
-
-  await actualApi.downloadBudget(process.env.actual_budget_id, {
-    password: process.env.actual_encrypted_password,
-  })
 }
 
 async function getActualAccountsNameIdMap(): Promise<{ [key: string]: UUID }> {
@@ -236,6 +208,7 @@ const answers = await inquirer.prompt([
     message: '请输入账单CSV文件路径',
   },
 ])
+console.time('对账耗时')
 if (answers.app === '支付宝') {
   const results = await reconcilAlipayBills(answers.billFilePath)
   dealReconcilResults(results)
@@ -245,3 +218,4 @@ if (answers.app === '支付宝') {
 } else {
   console.log('暂不支持该应用')
 }
+console.timeEnd('对账耗时')

@@ -3,9 +3,9 @@ import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 dayjs.extend(customParseFormat)
 
-type UUID = string
+export type UUID = string
 
-interface Transaction {
+export interface Transaction {
   id?: UUID
   account: UUID
   date: string
@@ -19,6 +19,18 @@ interface Transaction {
   transfer_id?: string
   cleared?: boolean
   subtransactions?: Transaction[]
+}
+
+export async function initActual() {
+  await actualApi.init({
+    dataDir: './actual-data',
+    serverURL: process.env.actual_server,
+    password: process.env.actual_password,
+  })
+
+  await actualApi.downloadBudget(process.env.actual_budget_id, {
+    password: process.env.actual_encrypted_password,
+  })
 }
 
 /**
@@ -45,15 +57,7 @@ export const addActualTransaction = async (trasnactionData: {
     importedID,
   } = trasnactionData
 
-  await actualApi.init({
-    dataDir: './actual-data',
-    serverURL: process.env.actual_server,
-    password: process.env.actual_password,
-  })
-
-  await actualApi.downloadBudget(process.env.actual_budget_id, {
-    password: process.env.actual_encrypted_password,
-  })
+  await initActual()
 
   // 匹配支付方式
   const accounts = await actualApi.getAccounts()
