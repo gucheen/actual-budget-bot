@@ -60,7 +60,7 @@ const seekMultilinePayee = (startIndex: number, ocrData: CNOCRData[]): string =>
       break
     }
   }
-  return payeeRaw.replace('>', '')
+  return payeeRaw.replace('>', '').trim()
 }
 
 const processAlipayOCRResults = (ocrData: CNOCRData[]): {
