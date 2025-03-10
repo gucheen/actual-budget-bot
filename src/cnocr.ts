@@ -70,7 +70,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
   date: string
   note: string
   fullPayee: string
-  importID: string
+  importedID: string
 } => {
   let payeeRaw = '',
     amount = 0,
@@ -78,7 +78,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     date = '',
     note = '',
     fullPayee = '',
-    importID = ''
+    importedID = ''
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
@@ -106,7 +106,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
         fullPayee = arr[index + 1].text
         break
       case '订单号':
-        importID = arr[index + 1].text
+        importedID = arr[index + 1].text
         break
       default:
     }
@@ -125,7 +125,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note,
     fullPayee,
-    importID,
+    importedID,
   }
   console.log('transactionData >>>')
   console.log(transactionData)
@@ -139,14 +139,14 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
   date: string
   note: string
   fullPayee: string
-  importID: string
+  importedID: string
 } => {
   let payeeRaw = '',
     amount = 0,
     accountNameRaw = '',
     date = '',
     fullPayee = '',
-    importID = ''
+    importedID = ''
   let firstAmountCatch = false
   let pushToNote = false
   const noteStrs: string[] = []
@@ -182,7 +182,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
         }
         break
       case '交易单号':
-        importID = arr[index + 1].text
+        importedID = arr[index + 1].text
         break
       default:
     }
@@ -201,7 +201,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note: noteStrs.join(''),
     fullPayee,
-    importID,
+    importedID,
   }
   console.log('transactionData >>>')
   console.log(transactionData)
@@ -215,7 +215,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
   date: string
   note: string
   fullPayee: string
-  importID: string
+  importedID: string
 } => {
   let payeeRaw = '',
     amount = 0,
@@ -223,7 +223,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     date = '',
     note = '',
     fullPayee = '',
-    importID = ''
+    importedID = ''
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
@@ -248,7 +248,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
         note = arr[index + 1].text
         break
       case '订单编号':
-        importID = arr[index + 1].text
+        importedID = arr[index + 1].text
         break
       default:
     }
@@ -267,7 +267,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note,
     fullPayee,
-    importID,
+    importedID,
   }
   console.log('transactionData >>>')
   console.log(transactionData)
@@ -313,7 +313,7 @@ export const cnocr = async (args: {
   date: string
   note: string
   fullPayee: string
-  importID: string
+  importedID: string
 } | null> => {
   const results = await postImageToCNOcr(args.image)
   let paymentType: PaymentType | undefined = args.paymentType
