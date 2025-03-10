@@ -99,8 +99,6 @@ async function reconcilAlipayBills(billFilePath: string): Promise<{ unmatched: a
 
   console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`)
 
-  await actualApi.shutdown()
-
   const unReconcilData: any[] = []
   const unmatched: { [key: string]: string }[] = data.filter(item => {
     if (item['收/付款方式'] === '' || item['交易分类'] === '转账红包') {
@@ -129,13 +127,23 @@ async function reconcilAlipayBills(billFilePath: string): Promise<{ unmatched: a
       amount = -amount
     }
     const date = item['交易时间'].substring(0, 10)
-    const findMatch = transactions.findIndex((transaction: Transaction) => {
+    const matchTrans = transactions.find((transaction: Transaction) => {
       // 日期、金额、账户一致认为是匹配的
       // 存在特殊情况，比如一天多笔相同的支付，暂时不处理
       return transaction.date === date && transaction.amount === amount && transaction.account === accountId
-    }) > -1
+    })
+
+    const findMatch = typeof matchTrans !== 'undefined'
+
+    // 还未标记清算的交易，更新为已清算
+    if (findMatch && !matchTrans.cleared) {
+      actualApi.updateTransaction(matchTrans.id, { cleared: true })
+    }
+
     return !findMatch
   })
+
+  await actualApi.shutdown()
 
   return {
     unmatched,
@@ -180,8 +188,6 @@ async function reconcilWechatBills(billFilePath: string): Promise<{ unmatched: a
 
   console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`)
 
-  await actualApi.shutdown()
-
   const unReconcilData: any[] = []
   const unmatched: { [key: string]: string }[] = data.filter(item => {
     const originalAccountName = item['支付方式']
@@ -192,13 +198,23 @@ async function reconcilWechatBills(billFilePath: string): Promise<{ unmatched: a
       amount = -amount
     }
     const date = item['交易时间'].substring(0, 10)
-    const findMatch = transactions.findIndex((transaction: Transaction) => {
+    const matchTrans = transactions.find((transaction: Transaction) => {
       // 日期、金额、账户一致认为是匹配的
       // 存在特殊情况，比如一天多笔相同的支付，暂时不处理
       return transaction.date === date && transaction.amount === amount && transaction.account === accountId
-    }) > -1
+    })
+
+    const findMatch = typeof matchTrans !== 'undefined'
+
+    // 还未标记清算的交易，更新为已清算
+    if (findMatch && !matchTrans.cleared) {
+      actualApi.updateTransaction(matchTrans.id, { cleared: true })
+    }
+
     return !findMatch
   })
+
+  await actualApi.shutdown()
 
   return {
     unmatched,
