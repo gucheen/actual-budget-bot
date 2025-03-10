@@ -1,4 +1,4 @@
-import actualApi from '@actual-app/api'
+import actualApi, { runQuery, q } from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 dayjs.extend(customParseFormat)
@@ -33,7 +33,7 @@ export const addActualTransaction = async (trasnactionData: {
   date: string
   note?: string
   fullPayee?: string
-  importID?: string
+  importedID?: string
 }): Promise<'ok'> => {
   const {
     payee,
@@ -42,7 +42,7 @@ export const addActualTransaction = async (trasnactionData: {
     date,
     note,
     fullPayee,
-    importID,
+    importedID,
   } = trasnactionData
 
   await actualApi.init({
@@ -65,6 +65,12 @@ export const addActualTransaction = async (trasnactionData: {
 
   console.log('matchAccount', matchAccount)
 
+  const dulplicatedTransaction = await runQuery(q('transactions').filter({ imported_id: importedID }).select(['*'])) as { data: Transaction[], dependencies: string[] }
+  if (dulplicatedTransaction && Array.isArray(dulplicatedTransaction.data) && dulplicatedTransaction.data.length > 0) {
+    console.log('dulplicatedTransaction', dulplicatedTransaction)
+    throw new Error(`已经存在相同的交易，imported_id：${importedID}`)
+  }
+
   const transaction = {
     account: matchAccount.id,
     date: date ?? dayjs().format('YYYY-MM-DD'),
@@ -72,7 +78,7 @@ export const addActualTransaction = async (trasnactionData: {
     payee_name: payee,
     imported_payee: fullPayee,
     notes: note,
-    imported_id: importID,
+    imported_id: importedID,
   } satisfies Transaction
 
   console.log('transaction', transaction)
