@@ -49,6 +49,7 @@ app.post('/ocr', async (req, reply) => {
       })
     }
   } catch (err) {
+    console.error(err)
     return reply.code(500).send(err)
   }
 })
