@@ -80,6 +80,8 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     fullPayee = '',
     importedID = ''
   let firstAmountCatch = false
+  let pushToNote = false
+  const noteStrs: string[] = []
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (/^-?[\d.]+$/.test(item.text) && !firstAmountCatch) {
@@ -88,6 +90,14 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
+    } else if (pushToNote) {
+      if (item.text === '推荐服务' || item.text === '订单号') {
+        pushToNote = false
+      } else if (/^共\d件$/.test(item.text)) {
+        // pass
+      } else {
+        noteStrs.push(item.text)
+      }
     }
     switch (item.text) {
       case '创建时间':
@@ -97,10 +107,17 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
       case '付款方式':
       case '退款方式':
         accountNameRaw = typeof arr[index + 1].text === 'string' ? arr[index + 1].text.replace('>', '') : ''
+        // ()的识别存在问题，这里做一下处理
+        if (accountNameRaw.includes('(') && !accountNameRaw.endsWith(')')) {
+          accountNameRaw += ')'
+        }
         break
       case '缴费说明':
       case '商品说明':
         note = arr[index + 1].text
+        break
+      case '交易详情':
+        pushToNote = true
         break
       case '收款方全称':
         fullPayee = arr[index + 1].text
@@ -123,7 +140,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     amount,
     accountName,
     date: date ?? dayjs().format('YYYY-MM-DD'),
-    note,
+    note: noteStrs.concat(note).filter(str => str).join(''),
     fullPayee,
     importedID,
   }
