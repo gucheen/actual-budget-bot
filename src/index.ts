@@ -36,6 +36,10 @@ app.post('/ocr', async (req, reply) => {
     })
 
     if (transactionData) {
+      const formNote = data.fields.note as MultipartValue
+      if (formNote && typeof formNote.value === 'string' && formNote.value.length > 0) {
+        transactionData.note = formNote.value.trim() + ';' + transactionData.note
+      }
       const add = await addActualTransaction(transactionData)
       if (add) {
         return reply.type('text/html').send(`<div class="alert alert-success" role="alert">添加成功，交易日期: ${transactionData.date}，商户: ${transactionData.payee}</div>`)
