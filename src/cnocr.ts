@@ -3,28 +3,9 @@ import { fileFromPath } from 'formdata-node/file-from-path'
 import actual from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-import fs from 'fs/promises'
 import { PaymentType } from './constants.ts'
-import path from 'path'
 dayjs.extend(customParseFormat)
 
-let ACCOUNT_NAME_MAP: {
-  [key: string]: string
-} = {}
-let PAYEE_MAP: {
-  [key: string]: string
-} = {}
-
-try {
-  await fs.access(path.join(import.meta.dirname, 'mapping.json'))
-  const mapping = JSON.parse(await fs.readFile(path.join(import.meta.dirname, 'mapping.json'), 'utf-8'))
-  ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP
-  PAYEE_MAP = mapping.PAYEE_MAP
-  console.log('mappings >>>')
-  console.log(mapping)
-} catch (error) {
-  console.log('no mappings')
-}
 
 interface CNOCRData {
   text: string
@@ -129,16 +110,10 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     }
   })
 
-  // 对支付对象（商家）的名称做映射，以解决不同平台、场景下同一个支付对象显示不同名称的情况
-  const payee = PAYEE_MAP[payeeRaw] || payeeRaw
-
-  // 对支付方式（账户）的名称做映射，以解决不同平台、场景下同一个支付方式（账户）显示不同名称的情况
-  const accountName = ACCOUNT_NAME_MAP[accountNameRaw] || accountNameRaw
-
   const transactionData = {
-    payee,
+    payee: payeeRaw,
     amount,
-    accountName,
+    accountName: accountNameRaw,
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note: noteStrs.concat(note).filter(str => str).join(''),
     fullPayee,
@@ -205,16 +180,10 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
     }
   })
 
-  // 对支付对象（商家）的名称做映射，以解决不同平台、场景下同一个支付对象显示不同名称的情况
-  const payee = PAYEE_MAP[payeeRaw] || payeeRaw
-
-  // 对支付方式（账户）的名称做映射，以解决不同平台、场景下同一个支付方式（账户）显示不同名称的情况
-  const accountName = ACCOUNT_NAME_MAP[accountNameRaw] || accountNameRaw
-
   const transactionData = {
-    payee,
+    payee: payeeRaw,
     amount,
-    accountName,
+    accountName: accountNameRaw,
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note: noteStrs.join(''),
     fullPayee,
@@ -271,16 +240,10 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     }
   })
 
-  // 对支付对象（商家）的名称做映射，以解决不同平台、场景下同一个支付对象显示不同名称的情况
-  const payee = PAYEE_MAP[payeeRaw] || payeeRaw
-
-  // 对支付方式（账户）的名称做映射，以解决不同平台、场景下同一个支付方式（账户）显示不同名称的情况
-  const accountName = ACCOUNT_NAME_MAP[accountNameRaw] || accountNameRaw
-
   const transactionData = {
-    payee,
+    payee: payeeRaw,
     amount,
-    accountName,
+    accountName: accountNameRaw,
     date: date ?? dayjs().format('YYYY-MM-DD'),
     note,
     fullPayee,

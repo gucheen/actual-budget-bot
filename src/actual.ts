@@ -1,7 +1,27 @@
 import actualApi, { runQuery, q } from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 dayjs.extend(customParseFormat)
+
+let ACCOUNT_NAME_MAP: {
+  [key: string]: string
+} = {}
+let PAYEE_MAP: {
+  [key: string]: string
+} = {}
+
+try {
+  await fs.access(path.join(import.meta.dirname, 'mapping.json'))
+  const mapping = JSON.parse(await fs.readFile(path.join(import.meta.dirname, 'mapping.json'), 'utf-8'))
+  ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP || {}
+  PAYEE_MAP = mapping.PAYEE_MAP || {}
+  console.log('mappings >>>')
+  console.log(mapping)
+} catch (error) {
+  console.log('no mappings')
+}
 
 export type UUID = string
 
@@ -59,12 +79,18 @@ export const addActualTransaction = async (trasnactionData: {
 
   await initActual()
 
+  // 对支付对象（商家）的名称做映射，以解决不同平台、场景下同一个支付对象显示不同名称的情况
+  const formatPayee = PAYEE_MAP[payee] || payee
+
+  // 对支付方式（账户）的名称做映射，以解决不同平台、场景下同一个支付方式（账户）显示不同名称的情况
+  const formatAccountName = ACCOUNT_NAME_MAP[accountName] || accountName
+
   // 匹配支付方式
   const accounts = await actualApi.getAccounts()
-  const matchAccount = accounts.find(account => account.name === accountName)
+  const matchAccount = accounts.find(account => account.name === formatAccountName)
 
   if (!matchAccount) {
-    throw new Error(`没有找到账户 ${accountName}`)
+    throw new Error(`没有找到账户 ${formatAccountName}`)
   }
 
   console.log('matchAccount', matchAccount)
@@ -81,7 +107,7 @@ export const addActualTransaction = async (trasnactionData: {
     account: matchAccount.id,
     date: date ?? dayjs().format('YYYY-MM-DD'),
     amount,
-    payee_name: payee,
+    payee_name: formatPayee,
     imported_payee: fullPayee,
     notes: note,
     imported_id: importedID,
