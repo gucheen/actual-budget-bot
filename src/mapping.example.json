@@ -4,5 +4,8 @@
   },
   "ACCOUNT_NAME_MAP": {
     "original account name": "account in actual"
+  },
+  "CATEGROY_MAP": {
+    "餐饮美食": "Food"
   }
 }

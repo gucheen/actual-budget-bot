@@ -52,6 +52,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
   note: string
   fullPayee: string
   importedID: string
+  category?: string
 } => {
   let payeeRaw = '',
     amount = 0,
@@ -59,7 +60,8 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     date = '',
     note = '',
     fullPayee = '',
-    importedID = ''
+    importedID = '',
+    category = ''
   let firstAmountCatch = false
   let pushToNote = false
   const noteStrs: string[] = []
@@ -105,6 +107,9 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
         break
       case '订单号':
         importedID = arr[index + 1].text
+        break
+      case '账单分类':
+        category = typeof arr[index + 1].text === 'string' ? arr[index + 1].text.replace('>', '').trim() : ''
         break
       default:
     }
@@ -294,6 +299,7 @@ export const cnocr = async (args: {
   note: string
   fullPayee: string
   importedID: string
+  category?: string
 } | null> => {
   const results = await postImageToCNOcr(args.image)
   let paymentType: PaymentType | undefined = args.paymentType

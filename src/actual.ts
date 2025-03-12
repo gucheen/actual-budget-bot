@@ -11,12 +11,16 @@ let ACCOUNT_NAME_MAP: {
 let PAYEE_MAP: {
   [key: string]: string
 } = {}
+let CATEGORP_MAP: {
+  [key: string]: string
+} = {}
 
 try {
   await fs.access(path.join(import.meta.dirname, 'mapping.json'))
   const mapping = JSON.parse(await fs.readFile(path.join(import.meta.dirname, 'mapping.json'), 'utf-8'))
   ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP || {}
   PAYEE_MAP = mapping.PAYEE_MAP || {}
+  CATEGORP_MAP = mapping.CATEGORP_MAP || {}
   console.log('mappings >>>')
   console.log(mapping)
 } catch (error) {
@@ -66,6 +70,7 @@ export const addActualTransaction = async (trasnactionData: {
   note?: string
   fullPayee?: string
   importedID?: string
+  category?: string
 }): Promise<'ok'> => {
   const {
     payee,
@@ -75,6 +80,7 @@ export const addActualTransaction = async (trasnactionData: {
     note,
     fullPayee,
     importedID,
+    category,
   } = trasnactionData
 
   await initActual()
@@ -103,7 +109,7 @@ export const addActualTransaction = async (trasnactionData: {
     }
   }
 
-  const transaction = {
+  const transaction: Transaction = {
     account: matchAccount.id,
     date: date ?? dayjs().format('YYYY-MM-DD'),
     amount,
@@ -111,7 +117,18 @@ export const addActualTransaction = async (trasnactionData: {
     imported_payee: fullPayee,
     notes: note,
     imported_id: importedID,
-  } satisfies Transaction
+  }
+
+  // 目前只允许配置了映射的分类，其他分类不支持
+  if (category) {
+    // 对分类的名称做映射，以解决不同平台、场景下同一个分类显示不同名称的情况
+    const formatCategory = CATEGORP_MAP[category] || category
+    const categories = await actualApi.getCategories()
+    const matchCategory = await categories.find(category => category.name === formatCategory)
+    if (matchCategory) {
+      transaction.category = matchCategory.id
+    }
+  }
 
   console.log('transaction', transaction)
 
