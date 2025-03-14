@@ -11,7 +11,7 @@ services:
     ports:
       - 8000:8000
   cnocr:
-    image: breezedeus/cnocr-arm64:latest
+    image: breezedeus/cnocr:latest
     environment:
       HF_ENDPOINT: https://hf-mirror.com
     command: bash -c "pip install -U cnocr cnstd --index-url https://mirrors.aliyun.com/pypi/simple && cnocr serve -H 0.0.0.0 -p 8501"

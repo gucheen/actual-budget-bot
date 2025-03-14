@@ -201,7 +201,8 @@ uploads/*
 !uploads/.gitkeep
 *.png
 !preview.png
-*.traineddata
 src/mapping.json
 test/*.json
 *.csv
+*.eml
+compose.yml
