@@ -7,6 +7,7 @@ import inquirer from 'inquirer'
 import { initActual } from './actual.ts'
 import type { UUID, Transaction } from './actual.ts'
 import { getMappings } from './mapping.ts'
+import { reconcilBankEml } from './bank-reconcil.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -182,28 +183,34 @@ export async function dealReconcilResults(results: { unmatched: any[], unReconci
 }
 
 if (import.meta.url.endsWith(process.argv[1])) {
-  const answers = await inquirer.prompt([
+  const answers1 = await inquirer.prompt([
     {
       type: 'list',
       name: 'app',
       message: '选择账单对应的支付应用',
-      choices: ['支付宝', '微信支付'],
-    },
-    {
-      type: 'input',
-      name: 'billFilePath',
-      message: '请输入账单CSV文件路径',
+      choices: ['支付宝', '微信支付', '银行邮件账单'],
     },
   ])
-  console.time('对账耗时')
-  if (answers.app === '支付宝') {
-    const results = await reconcilAlipayBills(answers.billFilePath)
-    dealReconcilResults(results)
-  } else if (answers.app === '微信支付') {
-    const results = await reconcilWechatBills(answers.billFilePath)
-    dealReconcilResults(results)
+  if (answers1.app === '银行邮件账单') {
+    reconcilBankEml()
   } else {
-    console.log('暂不支持该应用')
+    const answers2 = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'billFilePath',
+        message: '请输入账单CSV文件路径',
+      },
+    ])
+    console.time('对账耗时')
+    if (answers1.app === '支付宝') {
+      const results = await reconcilAlipayBills(answers2.billFilePath)
+      dealReconcilResults(results)
+    } else if (answers1.app === '微信支付') {
+      const results = await reconcilWechatBills(answers2.billFilePath)
+      dealReconcilResults(results)
+    } else {
+      console.log('暂不支持该应用')
+    }
+    console.timeEnd('对账耗时')
   }
-  console.timeEnd('对账耗时')
 }

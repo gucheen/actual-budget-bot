@@ -123,7 +123,7 @@ async function reconcilABCEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
-if (import.meta.url.endsWith(process.argv[1])) {
+export async function reconcilBankEml() {
   const answers = await inquirer.prompt([
     {
       type: 'list',
