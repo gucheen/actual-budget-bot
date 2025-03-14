@@ -149,7 +149,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
   const noteStrs: string[] = []
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
-    if (/^-?[\d.]+$/.test(item.text) && !firstAmountCatch) {
+    if (/^[+-]?[\d.]+$/.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
@@ -163,6 +163,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
       }
     }
     switch (item.text) {
+      case '退款时间':
       case '支付时间':
         date = dayjs(arr[index + 1].text, 'YYYY年M月D日HH:mm:ss').format('YYYY-MM-DD')
         break
@@ -172,12 +173,14 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
       case '商户全称':
         fullPayee = arr[index + 1].text
         break
+      case '退款方式':
       case '支付方式':
         accountNameRaw = arr[index + 1].text
         if (accountNameRaw.includes('(') && !accountNameRaw.endsWith(')')) {
           accountNameRaw += ')'
         }
         break
+      case '退款单号':
       case '交易单号':
         importedID = arr[index + 1].text
         break
