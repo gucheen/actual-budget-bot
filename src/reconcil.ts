@@ -16,17 +16,23 @@ let ACCOUNT_NAME_MAP: {
 let PAYEE_MAP: {
   [key: string]: string
 } = {}
+let CATEGORP_MAP: {
+  [key: string]: string
+} = {}
 
 try {
   await fs.promises.access(path.join(import.meta.dirname, 'mapping.json'))
   const mapping = JSON.parse(await fs.promises.readFile(path.join(import.meta.dirname, 'mapping.json'), 'utf-8'))
-  ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP
-  PAYEE_MAP = mapping.PAYEE_MAP
+  ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP || {}
+  PAYEE_MAP = mapping.PAYEE_MAP || {}
+  CATEGORP_MAP = mapping.CATEGORP_MAP || {}
+  console.log('mappings >>>')
+  console.log(mapping)
 } catch (error) {
   console.log('no mappings')
 }
 
-function createKeyForTransaction(transaction: Transaction) {
+export function createKeyForTransaction(transaction: Transaction) {
   return `${transaction.date}_${transaction.account}_${transaction.amount}`
 }
 
@@ -195,27 +201,29 @@ async function dealReconcilResults(results: { unmatched: any[], unReconcilData: 
   }
 }
 
-const answers = await inquirer.prompt([
-  {
-    type: 'list',
-    name: 'app',
-    message: '选择账单对应的支付应用',
-    choices: ['支付宝', '微信支付'],
-  },
-  {
-    type: 'input',
-    name: 'billFilePath',
-    message: '请输入账单CSV文件路径',
-  },
-])
-console.time('对账耗时')
-if (answers.app === '支付宝') {
-  const results = await reconcilAlipayBills(answers.billFilePath)
-  dealReconcilResults(results)
-} else if (answers.app === '微信支付') {
-  const results = await reconcilWechatBills(answers.billFilePath)
-  dealReconcilResults(results)
-} else {
-  console.log('暂不支持该应用')
+if (import.meta.url.endsWith(process.argv[1])) {
+  const answers = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'app',
+      message: '选择账单对应的支付应用',
+      choices: ['支付宝', '微信支付'],
+    },
+    {
+      type: 'input',
+      name: 'billFilePath',
+      message: '请输入账单CSV文件路径',
+    },
+  ])
+  console.time('对账耗时')
+  if (answers.app === '支付宝') {
+    const results = await reconcilAlipayBills(answers.billFilePath)
+    dealReconcilResults(results)
+  } else if (answers.app === '微信支付') {
+    const results = await reconcilWechatBills(answers.billFilePath)
+    dealReconcilResults(results)
+  } else {
+    console.log('暂不支持该应用')
+  }
+  console.timeEnd('对账耗时')
 }
-console.timeEnd('对账耗时')
