@@ -1,36 +1,14 @@
 import actualApi, { q, runQuery } from '@actual-app/api'
 import csv from 'csv-parser'
 import fs from 'fs'
-import path from 'path'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import inquirer from 'inquirer'
 import { initActual } from './actual.ts'
 import type { UUID, Transaction } from './actual.ts'
+import { getMappings } from './mapping.ts'
 
 dayjs.extend(customParseFormat)
-
-let ACCOUNT_NAME_MAP: {
-  [key: string]: string
-} = {}
-let PAYEE_MAP: {
-  [key: string]: string
-} = {}
-let CATEGORP_MAP: {
-  [key: string]: string
-} = {}
-
-try {
-  await fs.promises.access(path.join(import.meta.dirname, 'mapping.json'))
-  const mapping = JSON.parse(await fs.promises.readFile(path.join(import.meta.dirname, 'mapping.json'), 'utf-8'))
-  ACCOUNT_NAME_MAP = mapping.ACCOUNT_NAME_MAP || {}
-  PAYEE_MAP = mapping.PAYEE_MAP || {}
-  CATEGORP_MAP = mapping.CATEGORP_MAP || {}
-  console.log('mappings >>>')
-  console.log(mapping)
-} catch (error) {
-  console.log('no mappings')
-}
 
 export function createKeyForTransaction(transaction: Transaction) {
   return `${transaction.date}_${transaction.account}_${transaction.amount}`
@@ -80,6 +58,7 @@ async function reconcilAlipayBills(billFilePath: string): Promise<{ unmatched: a
       return false
     },
     getAccountName: item => {
+      const { ACCOUNT_NAME_MAP } = getMappings()
       let originalAccountName = item['收/付款方式']
       if (originalAccountName.includes('&')) {
         // 导出的支付方式会用 & 分隔，第一个是真正的付款方式，后面是各种优惠活动
@@ -106,6 +85,7 @@ async function reconcilWechatBills(billFilePath: string): Promise<{ unmatched: a
     // 微信导出个人对账单，前 16 行是注释说明
     readCSVOptions: { skipLines: 16, logMessage: '微信支付账单共 ${length} 条数据' },
     getAccountName: item => {
+      const { ACCOUNT_NAME_MAP } = getMappings()
       const originalAccountName = item['支付方式']
       const accountName = ACCOUNT_NAME_MAP[originalAccountName] || originalAccountName
       return accountName
@@ -179,7 +159,7 @@ async function reconcilBills(
   return { unmatched, unReconcilData }
 }
 
-async function dealReconcilResults(results: { unmatched: any[], unReconcilData: any[] }) {
+export async function dealReconcilResults(results: { unmatched: any[], unReconcilData: any[] }) {
   const { unReconcilData, unmatched } = results
   if (unmatched.length > 0) {
     console.log(`对账异常共 ${unmatched.length} 条`)
