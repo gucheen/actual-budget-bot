@@ -16,7 +16,8 @@
     "types": ["node"],
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "incremental": true
+    "incremental": true,
+    "lib": ["ESNext.Object"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
