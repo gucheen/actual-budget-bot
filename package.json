@@ -8,7 +8,7 @@
     "start": "node --env-file .env --experimental-transform-types src/index.ts",
     "dev": "node --env-file .env --experimental-transform-types --watch src/index.ts",
     "test": "node --env-file .env --experimental-transform-types test/ocr.test.ts",
-    "reconcil": "clear && node --env-file .env --experimental-transform-types src/reconcil.ts"
+    "reconcil": "node --env-file .env --experimental-transform-types src/reconcil.ts"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",

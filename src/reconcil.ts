@@ -1,6 +1,7 @@
 import actualApi, { q, runQuery } from '@actual-app/api'
 import csv from 'csv-parser'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import inquirer from 'inquirer'
@@ -182,7 +183,10 @@ export async function dealReconcilResults(results: { unmatched: any[], unReconci
   }
 }
 
-if (import.meta.url.endsWith(process.argv[1])) {
+if (import.meta.url.replaceAll(path.sep, path.posix.sep).endsWith(process.argv[1].replaceAll(path.sep, path.posix.sep))) {
+  // 清空终端
+  process.stdout.write('\x1Bc')
+
   const answers1 = await inquirer.prompt([
     {
       type: 'list',
