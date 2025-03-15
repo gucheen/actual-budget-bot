@@ -4,7 +4,7 @@ import actualApi from '@actual-app/api'
 import inquirer from 'inquirer'
 import { initActual, type Transaction } from './actual.ts'
 import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
-import { parseABCEml, type BankTransaction } from './eml-parser.ts'
+import { parseABCEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -91,8 +91,8 @@ async function reconcilABCEml(emlFile: string) {
 
       const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
         getAmount: (item: BankTransaction) => {
-          const [balanceAmount, currency] = item.balance.split('/')
-          return Number(balanceAmount.trim())
+          const [tradeAmount, currency] = typeof item.amount === 'string' ? item.amount.split('/') : []
+          return Number(tradeAmount.trim())
         },
       })
       if (unmatched.length > 0) {
@@ -100,10 +100,10 @@ async function reconcilABCEml(emlFile: string) {
         if (unAccountCashback.length > 0) {
           console.log(`将对 ${unAccountCashback.length} 条未记账的返现交易进行追加记录`)
           const results = await actualApi.addTransactions(answers.accountId, unAccountCashback.map((item) => {
-            const [balanceAmount, currency] = item.balance.split('/')
+            const [tradeAmount, currency] = typeof item.amount === 'string' ? item.amount.split('/') : []
             return {
               date: item.date,
-              amount: actualApi.utils.amountToInteger(Number(balanceAmount.trim())),
+              amount: actualApi.utils.amountToInteger(Number(tradeAmount.trim())),
               notes: item.summary,
               payee_name: '农行',
             }
@@ -123,13 +123,74 @@ async function reconcilABCEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
+
+async function reconcilCMBEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseCMBEml(emlFile)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  // 招行信报合一，多张卡一份账单
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await inquirer.prompt([
+        {
+          type: 'select',
+          choices: accounts.map((account) => ({
+            name: account.name,
+            value: account.id,
+          })),
+          name: 'accountId',
+          message: `请选择尾号${card}的银行卡对应的Actual账户`,
+        },
+      ])
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+        getAmount: (item: BankTransaction) => {
+          return item.amount as unknown as number
+        },
+      })
+      // if (unmatched.length > 0) {
+      //   const unAccountCashback = unmatched.filter((item) => item.summary === '未知')
+      //   if (unAccountCashback.length > 0) {
+      //     console.log(`将对 ${unAccountCashback.length} 条未记账的返现交易进行追加记录`)
+      //     const results = await actualApi.addTransactions(answers.accountId, unAccountCashback.map((item) => {
+      //       const amount = item.amount as unknown as number
+      //       return {
+      //         date: item.date,
+      //         amount: actualApi.utils.amountToInteger(amount),
+      //         notes: item.summary,
+      //         payee_name: '农行',
+      //       }
+      //     }))
+      //     if (results === 'ok') {
+      //       console.log('追加交易完成')
+      //     } else {
+      //       console.log('追加交易出错')
+      //     }
+      //   }
+      // }
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
 export async function reconcilBankEml() {
   const answers = await inquirer.prompt([
     {
       type: 'list',
       name: 'bank',
       message: '请选择银行',
-      choices: ['中国农业银行'],
+      choices: ['中国农业银行', '招商银行'],
     },
     {
       type: 'input',
@@ -140,6 +201,8 @@ export async function reconcilBankEml() {
   console.time('对账耗时')
   if (answers.bank === '中国农业银行') {
     await reconcilABCEml(answers.emlFilePath)
+  } else if (answers.bank === '招商银行') {
+    await reconcilCMBEml(answers.emlFilePath)
   } else {
     console.log('暂不支持该银行')
   }

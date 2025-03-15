@@ -51,11 +51,11 @@ interface ReadEmlJson {
 
 export interface BankTransaction {
   date: string
-  card: string
   summary: string
-  location: string
-  amount: string
-  balance: string
+  amount: string|number // 真实账单金额，需要符合几个要求：与支付金额一致，能表达支出、收入信息
+  location?: string
+  card?: string
+  [key: string]: unknown
 }
 
 export async function parseABCEml(emlfile: string) {
@@ -92,19 +92,19 @@ export async function parseABCEml(emlfile: string) {
 
         /**
          * [
-         * 空白，
-         * 交易日，
-         * 入账日，
-         * 卡号后四位，
-         * 交易摘要，
-         * 交易地点，
-         * 交易金额/币种，
-         * 入账金额/币种（支出为-)
+         * 空白,
+         * 交易日,
+         * 入账日,
+         * 卡号后四位,
+         * 交易摘要,
+         * 交易地点,
+         * 交易金额/币种,
+         * 入账金额/币种（支出为-),
          * ]
          */
 
         const transactionsOfBank: BankTransaction[] = originalTransactionData.map(transaction => {
-          const [_, date, __, card, summary, location, amount, balance] = transaction
+          const [_, date, __, card, summary, location, balance, amount] = transaction
           return {
             date: dayjs(date, 'YYYYMMDD').format('YYYY-MM-DD'),
             card,
@@ -121,6 +121,94 @@ export async function parseABCEml(emlfile: string) {
           emlJson,
         }
       }
+    }
+  }
+
+  return {
+    transactionsOfBank: [],
+    html: '',
+    emlJson,
+  }
+}
+
+type CMBTransactionType = '' | '还款' | '分期' | '消费'
+export async function parseCMBEml(emlfile: string) {
+  if (!fs.existsSync(emlfile)) {
+    console.error('eml 文件不存在')
+    process.exit(1)
+  }
+
+  const content = fs.readFileSync(emlfile, 'utf-8')
+
+  const emlJson = readEml(content) as ReadEmlJson
+
+  if (emlJson.html) {
+    const html = emlJson.html
+
+    const browser = new Browser()
+    const page = browser.newPage()
+    page.content = html
+    const trs = page.mainFrame.document.body.querySelectorAll('.bgTable tr tr')
+    const originalTransactionData = Array.from(trs).map(tr => {
+      return Array.from(tr.children).map(child => child.textContent)
+    })
+
+    await browser.close()
+
+    let mode: CMBTransactionType = ''
+
+    /**
+     * [
+     * 空白,
+     * 交易日,
+     * 记账日,
+     * 交易摘要,
+     * ￥ 人民币金额(支出是正数，收入是负数),
+     * 卡号后四位,
+     * 交易地金额（可能是外币）,
+     * 交易地,
+     * ]
+     */
+    const transactionsOfBank: BankTransaction[] = originalTransactionData.map((trans) => {
+      if (trans.length === 1) {
+        mode = trans[0].trim() as unknown as CMBTransactionType
+      } else {
+        // 优先使用交易日
+        const [_, tradeDate, recordDate, summary, RMBAmount, card, originalAmount,, location = 'CN'] = trans
+        const [RMBSymbol, amountStr] = RMBAmount.split(' ').map(item => item.trim())
+        if (mode === '还款') {
+          // 招行账单还款记为负数
+          const amount = Math.abs(Number(amountStr))
+          return {
+            date: dayjs(tradeDate || recordDate, 'MMDD').format('YYYY-MM-DD'),
+            amount,
+            summary,
+            card,
+            location,
+            originalAmount,
+          }
+        } else if (mode === '分期') {
+          // 分期暂时不处理
+        } else if (mode === '消费') {
+          // 招行账单消费记为正数
+          const amount = -Math.abs(Number(amountStr))
+          return {
+            date: dayjs(tradeDate || recordDate, 'MMDD').format('YYYY-MM-DD'),
+            amount,
+            summary,
+            card,
+            location,
+            originalAmount,
+          }
+        }
+      }
+      return null
+    }).filter(item => item !== null).toSorted((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+
+    return {
+      transactionsOfBank,
+      html,
+      emlJson,
     }
   }
   return {
