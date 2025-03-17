@@ -6,12 +6,14 @@ import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import { PaymentType } from './constants.ts'
 dayjs.extend(customParseFormat)
 
-
 interface CNOCRData {
   text: string
   score: number
   position: [number, number][]
 }
+
+// 交易金额正则
+const TradeAmountPattern = /^-?[¥￥]?[\d.,]+$/
 
 /**
  * 由于支付对象（商家）名称可能会很长导致折行，并且也有可能因为符号的存在导致OCR识别为多个区块
@@ -67,7 +69,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
   const noteStrs: string[] = []
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
-    if (/^-?[\d.]+$/.test(item.text) && !firstAmountCatch) {
+    if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
@@ -149,7 +151,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
   const noteStrs: string[] = []
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
-    if (/^[+-]?[\d.]+$/.test(item.text) && !firstAmountCatch) {
+    if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
@@ -221,7 +223,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
   let firstAmountCatch = false
   ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
-    if (/^-?[¥￥]?[\d.]+$/.test(item.text) && !firstAmountCatch) {
+    if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
       amount = actual.utils.amountToInteger(Number(item.text.replace(/[¥￥]/, '')))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
