@@ -85,7 +85,7 @@ export const addActualTransaction = async (trasnactionData: {
   console.log('matchAccount', matchAccount)
 
   if (importedID) {
-    const dulplicatedTransaction = await runQuery(q('transactions').filter({ account: matchAccount.id, imported_id: importedID }).select(['*'])) as { data: Transaction[], dependencies: string[] }
+    const dulplicatedTransaction = await runQuery(q('transactions').filter({ account: matchAccount.id, imported_id: importedID, date, amount }).select(['*'])) as { data: Transaction[], dependencies: string[] }
     if (dulplicatedTransaction && Array.isArray(dulplicatedTransaction.data) && dulplicatedTransaction.data.length > 0) {
       console.log('dulplicatedTransaction', dulplicatedTransaction)
       throw new Error(`已经存在相同的交易，imported_id：${importedID}`)
