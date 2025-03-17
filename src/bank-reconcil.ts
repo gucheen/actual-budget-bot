@@ -8,7 +8,7 @@ import { parseABCEml, parseBOCOMEml, parseCMBEml, type BankTransaction } from '.
 
 dayjs.extend(customParseFormat)
 
-async function reconcilBills(
+export async function reconcilBills(
   data: BankTransaction[],
   accountId: string,
   processor: {
@@ -25,7 +25,7 @@ async function reconcilBills(
 
   console.log(`账单日期范围：${startDate} ~ ${endDate}`)
   const transactions: Transaction[] = await actualApi.getTransactions(accountId, startDate, endDate)
-  console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`)
+  console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`, transactions)
 
   // 这个map用来记录同一天多笔相同支付账户和金额的交易
   const multipleTransactionIndex = new Map<string, number>()
