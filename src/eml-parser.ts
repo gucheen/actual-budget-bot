@@ -1,4 +1,5 @@
-import { readEml } from 'eml-parse-js'
+import { readEml, parseEml } from 'eml-parse-js'
+import type { ReadedEmlJson, ParsedEmlJson } from 'eml-parse-js'
 import { Browser } from 'happy-dom'
 import fs from 'node:fs'
 import util from 'node:util'
@@ -6,48 +7,6 @@ import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 
 dayjs.extend(customParseFormat)
-
-interface EmailAddress {
-  name: string
-  email: string
-}
-
-interface EmlHeaders {
-  'Content-Type': string
-  'Content-Transfer-Encoding': string
-}
-
-type BoundaryHeaders = any
-
-interface Attachment {
-  name: string;
-  contentType: string;
-  inline: boolean;
-  data: string | Uint8Array;
-  data64: string;
-  filename?: string;
-  mimeType?: string;
-  id?: string;
-  cid?: string;
-}
-
-interface ReadEmlJson {
-  date: Date | string;
-  subject: string;
-  from: EmailAddress | EmailAddress[] | null;
-  to: EmailAddress | EmailAddress[] | null;
-  cc?: EmailAddress | EmailAddress[] | null;
-  headers: EmlHeaders;
-  multipartAlternative?: {
-    'Content-Type': string;
-  };
-  text?: string;
-  textheaders?: BoundaryHeaders;
-  html?: string; // email html data
-  htmlheaders?: BoundaryHeaders;
-  attachments?: Attachment[];
-  data?: string;
-}
 
 export interface BankTransaction {
   date: string
@@ -66,7 +25,7 @@ export async function parseABCEml(emlfile: string) {
 
   const content = fs.readFileSync(emlfile, 'utf-8')
 
-  const emlJson = readEml(content) as ReadEmlJson
+  const emlJson = readEml(content) as ReadedEmlJson
 
   if (Array.isArray(emlJson.attachments)) {
     for (const att of emlJson.attachments) {
@@ -76,7 +35,7 @@ export async function parseABCEml(emlfile: string) {
         if (typeof att.contentType === 'string' && (att.contentType.includes('gbk') || att.contentType.includes('gb2312'))) {
           const decoder = new util.TextDecoder('gbk')
           html = decoder.decode(body)
-          html.replace("<meta http-equiv='Content-Type' content='text/html;charset=gbk'>", "<meta http-equiv='Content-Type' content='text/html;charset=utf-8'>")
+          html = html.replace("<meta http-equiv='Content-Type' content='text/html;charset=gbk'>", "<meta http-equiv='Content-Type' content='text/html;charset=utf-8'>")
         } else {
           html = body.toString()
         }
@@ -140,9 +99,9 @@ export async function parseCMBEml(emlfile: string) {
 
   const content = fs.readFileSync(emlfile, 'utf-8')
 
-  const emlJson = readEml(content) as ReadEmlJson
+  const emlJson = readEml(content) as ReadedEmlJson
 
-  if (emlJson.html) {
+  if (typeof emlJson.html === 'string') {
     const html = emlJson.html
 
     const browser = new Browser()
@@ -204,6 +163,88 @@ export async function parseCMBEml(emlfile: string) {
       }
       return null
     }).filter(item => item !== null).toSorted((a, b) => dayjs(a.date).diff(dayjs(b.date)))
+
+    return {
+      transactionsOfBank,
+      html,
+      emlJson,
+    }
+  }
+  return {
+    transactionsOfBank: [],
+    html: '',
+    emlJson,
+  }
+}
+
+// 交通银行电子邮件账单
+export async function parseBOCOMEml(emlfile: string) {
+  if (!fs.existsSync(emlfile)) {
+    console.error('eml 文件不存在')
+    process.exit(1)
+  }
+
+  const content = fs.readFileSync(emlfile, 'utf-8')
+
+  const emlJson = parseEml(content) as ParsedEmlJson
+
+  //招行账单 html 原始编码就是 gbk
+  if (typeof emlJson.body === 'string') {
+    const decoder = new util.TextDecoder('gbk')
+    const html = decoder.decode(Buffer.from(emlJson.body, 'base64')).replaceAll('charset=gbk', 'charset=utf-8')
+
+    const browser = new Browser()
+    const page = browser.newPage()
+    page.content = html
+    const repayListTrs = page.mainFrame.document.body.querySelectorAll('#repayList table tbody tr')
+    const takeListTrs = page.mainFrame.document.body.querySelectorAll('#takeList table tbody tr')
+    const repayList = Array.from(repayListTrs).map(tr => {
+      return Array.from(tr.children).map(child => child.textContent)
+    })
+    const takeList = Array.from(takeListTrs).map(tr => {
+      return Array.from(tr.children).map(child => child.textContent)
+    })
+
+    await browser.close()
+
+    /**
+     * [
+     * 空白,
+     * 交易日,
+     * 记账日,
+     * 卡号后四位,
+     * 交易说明,
+     * CNY交易金额,
+     * CNY入账金额,
+     * ]
+     */
+    const transactionsOfBank: BankTransaction[] = repayList.map((trans) => {
+      // 优先使用交易日
+      const [_, tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
+      // 前三位是交易金额的符号，需要去掉
+      const amountStr = tradeAmountStr.substring(3)
+      const amount = Number(amountStr)
+      return {
+        date: dayjs(tradeDate || recordDate, 'MM/DD').format('YYYY-MM-DD'),
+        amount,
+        summary,
+        card,
+        originalAmount: originalAmountStr.substring(3),
+      }
+    }).concat(takeList.map((trans) => {
+      // 优先使用交易日
+      const [_, tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
+      // 前三位是交易金额的符号，需要去掉
+      const amountStr = tradeAmountStr.substring(3)
+      const amount = -Number(amountStr)
+      return {
+        date: dayjs(tradeDate || recordDate, 'MM/DD').format('YYYY-MM-DD'),
+        amount,
+        summary,
+        card,
+        originalAmount: originalAmountStr.substring(3),
+      }
+    })).toSorted((a, b) => dayjs(a.date).diff(dayjs(b.date)))
 
     return {
       transactionsOfBank,

@@ -4,7 +4,7 @@ import actualApi from '@actual-app/api'
 import inquirer from 'inquirer'
 import { initActual, type Transaction } from './actual.ts'
 import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
-import { parseABCEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
+import { parseABCEml, parseBOCOMEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -123,7 +123,6 @@ async function reconcilABCEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
-
 async function reconcilCMBEml(emlFile: string) {
   const {
     transactionsOfBank,
@@ -156,26 +155,49 @@ async function reconcilCMBEml(emlFile: string) {
           return item.amount as unknown as number
         },
       })
-      // if (unmatched.length > 0) {
-      //   const unAccountCashback = unmatched.filter((item) => item.summary === '未知')
-      //   if (unAccountCashback.length > 0) {
-      //     console.log(`将对 ${unAccountCashback.length} 条未记账的返现交易进行追加记录`)
-      //     const results = await actualApi.addTransactions(answers.accountId, unAccountCashback.map((item) => {
-      //       const amount = item.amount as unknown as number
-      //       return {
-      //         date: item.date,
-      //         amount: actualApi.utils.amountToInteger(amount),
-      //         notes: item.summary,
-      //         payee_name: '农行',
-      //       }
-      //     }))
-      //     if (results === 'ok') {
-      //       console.log('追加交易完成')
-      //     } else {
-      //       console.log('追加交易出错')
-      //     }
-      //   }
-      // }
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
+async function reconcilBOCOMEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseBOCOMEml(emlFile)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await inquirer.prompt([
+        {
+          type: 'select',
+          choices: accounts.map((account) => ({
+            name: account.name,
+            value: account.id,
+          })),
+          name: 'accountId',
+          message: `请选择尾号${card}的银行卡对应的Actual账户`,
+        },
+      ])
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+        getAmount: (item: BankTransaction) => {
+          return item.amount as unknown as number
+        },
+        filterUnreconciled: (item: BankTransaction) => {
+          // 分期扣款暂时不对账
+          return item.summary.includes('分期扣款')
+        },
+      })
       console.log(`尾号${card}的银行卡对账结果：`)
       dealReconcilResults({ unReconcilData, unmatched })
     }
@@ -190,7 +212,7 @@ export async function reconcilBankEml() {
       type: 'list',
       name: 'bank',
       message: '请选择银行',
-      choices: ['中国农业银行', '招商银行'],
+      choices: ['中国农业银行', '招商银行', '交通银行'],
     },
     {
       type: 'input',
@@ -203,6 +225,8 @@ export async function reconcilBankEml() {
     await reconcilABCEml(answers.emlFilePath)
   } else if (answers.bank === '招商银行') {
     await reconcilCMBEml(answers.emlFilePath)
+  } else if (answers.bank === '交通银行') {
+    await reconcilBOCOMEml(answers.emlFilePath)
   } else {
     console.log('暂不支持该银行')
   }
