@@ -71,7 +71,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text))
+      amount = actual.utils.amountToInteger(Number(item.text.replaceAll(',', '')))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
@@ -153,7 +153,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text))
+      amount = actual.utils.amountToInteger(Number(item.text.replaceAll(',', '')))
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
