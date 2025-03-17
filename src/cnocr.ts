@@ -15,6 +15,13 @@ interface CNOCRData {
 // 交易金额正则
 const TradeAmountPattern = /^-?[¥￥]?[\d.,]+$/
 
+function parseTradeAmount (tradeAmountString: string): number {
+  if (typeof tradeAmountString !== 'string') {
+    return NaN
+  }
+  return Number(tradeAmountString.replace(/[¥￥,]/g, ''))
+}
+
 /**
  * 由于支付对象（商家）名称可能会很长导致折行，并且也有可能因为符号的存在导致OCR识别为多个区块
  * 因此这里需要用反向查找的方式来寻找完整的支付对象（商家）的名称
@@ -71,7 +78,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text.replaceAll(',', '')))
+      amount = actual.utils.amountToInteger(parseTradeAmount)
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
@@ -153,7 +160,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text.replaceAll(',', '')))
+      amount = actual.utils.amountToInteger(parseTradeAmount)
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
@@ -225,7 +232,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
-      amount = actual.utils.amountToInteger(Number(item.text.replace(/[¥￥]/, '')))
+      amount = actual.utils.amountToInteger(parseTradeAmount)
       // 查找完整的商家名称，详细逻辑请看 seekMultilinePayee 方法说明
       const seekIndex = index - 1
       payeeRaw = seekMultilinePayee(seekIndex, arr)
