@@ -13,13 +13,16 @@ interface CNOCRData {
 }
 
 // 交易金额正则
-const TradeAmountPattern = /^-?[¥￥]?[\d.,]+$/
+const TradeAmountPattern = /^[+-]?.?[\d.,]+$/
 
 function parseTradeAmount(tradeAmountString: string): number {
   if (typeof tradeAmountString !== 'string') {
     return NaN
   }
-  return Number(tradeAmountString.replace(/[¥￥,]/g, ''))
+  let tradeAmountStr = tradeAmountString.trim()
+  // 去除金额中的非数字字符，但保留负数标识 -
+  tradeAmountStr = tradeAmountStr.replace(/[^\d.-]/g, '')
+  return Number(tradeAmountStr)
 }
 
 /**
