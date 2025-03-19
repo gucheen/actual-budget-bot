@@ -11,7 +11,7 @@
     "reconcil": "node --env-file .env --experimental-transform-types src/reconcil.ts"
   },
   "devDependencies": {
-    "@types/node": "^22.13.9",
+    "@types/node": "^22.13.10",
     "typescript": "^5.8.2"
   },
   "dependencies": {
@@ -23,8 +23,8 @@
     "fastify": "^5.2.1",
     "formdata-node": "^6.0.3",
     "happy-dom": "^17.4.4",
-    "inquirer": "^12.4.2",
-    "nanoid": "^5.1.2",
+    "inquirer": "^12.5.0",
+    "nanoid": "^5.1.5",
     "pdf2json": "^3.1.5"
   }
 }
