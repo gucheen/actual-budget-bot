@@ -5,6 +5,7 @@ import inquirer from 'inquirer'
 import { initActual, type Transaction } from './actual.ts'
 import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
 import { parseABCEml, parseBOCOMEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
+import { parseNBCBWebBills } from './banks/nbcb.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -212,21 +213,39 @@ export async function reconcilBankEml() {
       type: 'list',
       name: 'bank',
       message: '请选择银行',
-      choices: ['中国农业银行', '招商银行', '交通银行'],
+      choices: ['中国农业银行', '招商银行', '交通银行', '宁波银行'],
     },
+  ])
+
+  if (answers.bank === '宁波银行') {
+    console.time('对账耗时')
+    const answers3 = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'webBillJSON',
+        message: '请输入宁波银行账单页面提取JSON',
+      },
+    ])
+    await parseNBCBWebBills(answers3.webBillJSON)
+    console.timeEnd('对账耗时')
+    return
+  }
+
+  const answers2 = await inquirer.prompt([
     {
       type: 'input',
       name: 'emlFilePath',
       message: '请输入账单eml文件路径',
     },
   ])
+
   console.time('对账耗时')
   if (answers.bank === '中国农业银行') {
-    await reconcilABCEml(answers.emlFilePath)
+    await reconcilABCEml(answers2.emlFilePath)
   } else if (answers.bank === '招商银行') {
-    await reconcilCMBEml(answers.emlFilePath)
+    await reconcilCMBEml(answers2.emlFilePath)
   } else if (answers.bank === '交通银行') {
-    await reconcilBOCOMEml(answers.emlFilePath)
+    await reconcilBOCOMEml(answers2.emlFilePath)
   } else {
     console.log('暂不支持该银行')
   }
