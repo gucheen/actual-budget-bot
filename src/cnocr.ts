@@ -77,7 +77,7 @@ const processAlipayOCRResults = (ocrData: CNOCRData[]): {
   let firstAmountCatch = false
   let pushToNote = false
   const noteStrs: string[] = []
-  ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+  ocrData.filter(item => item.text && item.score > 0.2).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
@@ -159,7 +159,7 @@ const processWechatOCRResults = (ocrData: CNOCRData[]): {
   let firstAmountCatch = false
   let pushToNote = false
   const noteStrs: string[] = []
-  ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+  ocrData.filter(item => item.text && item.score > 0.2).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
@@ -231,7 +231,7 @@ const processQuickPassOCRResults = (ocrData: CNOCRData[]): {
     fullPayee = '',
     importedID = ''
   let firstAmountCatch = false
-  ocrData.filter(item => item.text && item.score > 0.3).forEach((item, index, arr) => {
+  ocrData.filter(item => item.text && item.score > 0.2).forEach((item, index, arr) => {
     // 首个符合金额数字规则的区块作为交易金额处理
     if (TradeAmountPattern.test(item.text) && !firstAmountCatch) {
       firstAmountCatch = true
