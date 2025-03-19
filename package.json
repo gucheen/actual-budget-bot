@@ -25,6 +25,7 @@
     "happy-dom": "^17.4.4",
     "inquirer": "^12.5.0",
     "nanoid": "^5.1.5",
+    "node-html-parser": "^7.0.1",
     "pdf2json": "^3.1.5"
   }
 }
