@@ -5,13 +5,14 @@ import fs from 'node:fs'
 import util from 'node:util'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
+import { parse } from 'node-html-parser'
 
 dayjs.extend(customParseFormat)
 
 export interface BankTransaction {
   date: string
   summary: string
-  amount: string|number // 真实账单金额，需要符合几个要求：与支付金额一致，能表达支出、收入信息
+  amount: string | number // 真实账单金额，需要符合几个要求：与支付金额一致，能表达支出、收入信息
   location?: string
   card?: string
   [key: string]: unknown
@@ -133,7 +134,7 @@ export async function parseCMBEml(emlfile: string) {
         mode = trans[0].trim() as unknown as CMBTransactionType
       } else {
         // 优先使用交易日
-        const [_, tradeDate, recordDate, summary, RMBAmount, card, originalAmount,, location = 'CN'] = trans
+        const [_, tradeDate, recordDate, summary, RMBAmount, card, originalAmount, , location = 'CN'] = trans
         const [RMBSymbol, amountStr] = RMBAmount.split(' ').map(item => item.trim())
         if (mode === '还款') {
           // 招行账单还款记为负数
@@ -188,7 +189,7 @@ export async function parseBOCOMEml(emlfile: string) {
 
   const emlJson = parseEml(content) as ParsedEmlJson
 
-  //招行账单 html 原始编码就是 gbk
+  //交通银行 html 原始编码就是 gbk
   if (typeof emlJson.body === 'string') {
     const decoder = new util.TextDecoder('gbk')
     const html = decoder.decode(Buffer.from(emlJson.body, 'base64')).replaceAll('charset=gbk', 'charset=utf-8')
@@ -250,6 +251,66 @@ export async function parseBOCOMEml(emlfile: string) {
       transactionsOfBank,
       html,
       emlJson,
+    }
+  }
+  return {
+    transactionsOfBank: [],
+    html: '',
+    emlJson,
+  }
+}
+
+// 建设银行邮件账单
+export async function parseCCBEml(emlfile: string) {
+  if (!fs.existsSync(emlfile)) {
+    console.error('eml 文件不存在')
+    process.exit(1)
+  }
+
+  const content = fs.readFileSync(emlfile, 'utf-8')
+
+  const emlJson = readEml(content) as ReadedEmlJson
+
+  if (typeof emlJson.html === 'string') {
+    const html = emlJson.html
+
+    const root = parse(html)
+    const target = Array.from(root.querySelectorAll('table')).find(table => table.querySelector('tr')?.textContent.includes('【交易明细】'))
+    if (target) {
+
+      /**
+     * [
+     * 交易日,
+     * 记账日,
+     * 卡号后四位,
+     * 交易描述,
+     * 交易币种,
+     * 交易金额,
+     * 结算币种,
+     * 结算金额,
+     * ]
+     */
+      const transactionsOfBank = Array.from(target.querySelectorAll('tr')).slice(4, -1).map(tr => {
+        const [date, pDate, card, summary, tradeCurrency, tradeAmount, clearCurrency, clearAmount] = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
+
+        return {
+          date: date || pDate,
+          card,
+          summary,
+          // 建行支出记为正数，收入记为负数
+          amount: -Number(clearAmount.replace(',', '')),
+          tradeCurrency,
+          tradeAmount,
+          clearCurrency,
+          clearAmount,
+        }
+      })
+
+      return {
+        transactionsOfBank,
+        html,
+        emlJson,
+      }
     }
   }
   return {
