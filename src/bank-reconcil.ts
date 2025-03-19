@@ -64,6 +64,7 @@ export async function reconcilBills(
   return { unmatched, unReconcilData }
 }
 
+// 农行电子邮件账单对账
 async function reconcilABCEml(emlFile: string) {
   const {
     transactionsOfBank,
@@ -124,6 +125,7 @@ async function reconcilABCEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
+// 招行电子邮件账单对账
 async function reconcilCMBEml(emlFile: string) {
   const {
     transactionsOfBank,
@@ -164,6 +166,7 @@ async function reconcilCMBEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
+// 交行电子邮件账单对账
 async function reconcilBOCOMEml(emlFile: string) {
   const {
     transactionsOfBank,
@@ -207,6 +210,7 @@ async function reconcilBOCOMEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
+// 建行电子邮件账单对账
 async function reconcilCCBEml(emlFile: string) {
   const {
     transactionsOfBank,

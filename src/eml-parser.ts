@@ -18,6 +18,7 @@ export interface BankTransaction {
   [key: string]: unknown
 }
 
+// 农行电子邮件账单 eml 解析
 export async function parseABCEml(emlfile: string) {
   if (!fs.existsSync(emlfile)) {
     console.error('eml 文件不存在')
@@ -92,6 +93,7 @@ export async function parseABCEml(emlfile: string) {
 }
 
 type CMBTransactionType = '' | '还款' | '分期' | '消费'
+// 招行电子邮件账单 eml 解析
 export async function parseCMBEml(emlfile: string) {
   if (!fs.existsSync(emlfile)) {
     console.error('eml 文件不存在')
@@ -178,7 +180,7 @@ export async function parseCMBEml(emlfile: string) {
   }
 }
 
-// 交通银行电子邮件账单
+// 交通银行电子邮件账单 eml 解析
 export async function parseBOCOMEml(emlfile: string) {
   if (!fs.existsSync(emlfile)) {
     console.error('eml 文件不存在')
@@ -260,7 +262,7 @@ export async function parseBOCOMEml(emlfile: string) {
   }
 }
 
-// 建设银行邮件账单
+// 建设银行电子邮件账单 eml 解析
 export async function parseCCBEml(emlfile: string) {
   if (!fs.existsSync(emlfile)) {
     console.error('eml 文件不存在')
