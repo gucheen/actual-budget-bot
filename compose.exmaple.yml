@@ -1,7 +1,8 @@
 services:
   app:
     image: gucheen/actual-budget-bot:nightly
-    env_file: ".env"
+    env_file:
+      - .env
     volumes:
       - ./src/mapping.json:/home/node/app/src/mapping.json
       - ./actual-data:/home/node/app/actual-data
