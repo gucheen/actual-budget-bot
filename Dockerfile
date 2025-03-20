@@ -27,4 +27,4 @@ COPY --chown=node:node . .
 EXPOSE 8000
 
 # Run the application.
-CMD ["npm", "start-docker"]
+CMD ["npm", "run", "start-docker"]
