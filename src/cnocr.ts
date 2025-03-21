@@ -14,7 +14,7 @@ interface CNOCRData {
 
 // 交易金额正则，正负号，数字（可能存在分隔符），小数点，两位小数
 // 微信、支付宝、云闪付的支付金额都满足这个条件，因此使用这个详细的正则来匹配金额数字，避免匹配到一些非金额数字
-const TradeAmountPattern = /^[+-]?.?[\d,]\.\d{2}$/
+const TradeAmountPattern = /^[+-]?.?[\d,]+\.\d{2}$/
 
 function parseTradeAmount(tradeAmountString: string): number {
   if (typeof tradeAmountString !== 'string') {
