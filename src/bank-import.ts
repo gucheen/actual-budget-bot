@@ -1,0 +1,262 @@
+import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat.js'
+import actualApi, { utils } from '@actual-app/api'
+import { input, select } from '@inquirer/prompts'
+import { initActual, type Transaction } from './actual.ts'
+import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
+import { parseABCEml, parseBOCOMEml, parseCCBEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
+import { parseNBCBWebBills } from './banks/nbcb.ts'
+
+dayjs.extend(customParseFormat)
+
+export async function reconcilBills(
+  data: BankTransaction[],
+  accountId: string,
+  processor: {
+    getAmount: (item: BankTransaction) => number
+    // 过滤掉不需要对账的交易
+    filterUnreconciled?: (item: BankTransaction) => boolean
+  }
+): Promise<{ unmatched: BankTransaction[], unReconcilData: BankTransaction[] }> {
+  if (!Array.isArray(data) || data.length === 0) {
+    return { unmatched: [], unReconcilData: [] }
+  }
+  const startDate = data.at(0)?.date
+  const endDate = data.at(-1)?.date
+
+  console.log(`账单日期范围：${startDate} ~ ${endDate}`)
+  const transactions: Transaction[] = await actualApi.getTransactions(accountId, startDate, endDate)
+  console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`)
+
+  // 这个map用来记录同一天多笔相同支付账户和金额的交易
+  const multipleTransactionIndex = new Map<string, number>()
+  const unReconcilData: any[] = []
+  const unmatched = data.filter(item => {
+    if (typeof processor.filterUnreconciled === 'function' && processor.filterUnreconciled(item)) {
+      unReconcilData.push(item)
+      return false
+    }
+
+    const amount = actualApi.utils.amountToInteger(processor.getAmount(item))
+    const date = item.date
+
+    const matchTrans = transactions.filter(t =>
+      // 日期、金额一致认为是匹配的
+      t.date === date && t.amount === amount
+    )
+
+    let index = 0
+    if (matchTrans.length > 1) {
+      // 同一天多笔相同支付账户和金额的交易
+      const key = createKeyForTransaction({ date, account: accountId, amount })
+      index = multipleTransactionIndex.get(key) || 0
+      multipleTransactionIndex.set(key, index + 1)
+    }
+
+    const matchTransaction = matchTrans[index]
+    if (matchTransaction && !matchTransaction.cleared && matchTransaction.id) {
+      actualApi.updateTransaction(matchTransaction.id, { cleared: true })
+    }
+
+    return !matchTransaction
+  })
+
+  return { unmatched, unReconcilData }
+}
+
+// 农行电子邮件账单对账
+async function reconcilABCEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseABCEml(emlFile)
+  console.log(transactionsOfBank)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
+
+      const getAmount = (item: BankTransaction) => {
+        const [tradeAmount, currency] = typeof item.amount === 'string' ? item.amount.split('/') : []
+        return Number(tradeAmount.trim())
+      }
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+        getAmount,
+      })
+      if (Array.isArray(unmatched) && unmatched.length > 0) {
+        actualApi.addTransactions(answers, unmatched.map(item => {
+          return {
+            date: item.date,
+            notes: item.summary,
+            amount: utils.amountToInteger(getAmount(item)),
+          }
+        }))
+      }
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
+// 招行电子邮件账单对账
+async function reconcilCMBEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseCMBEml(emlFile)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  // 招行信报合一，多张卡一份账单
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+        getAmount: (item: BankTransaction) => {
+          return item.amount as unknown as number
+        },
+      })
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
+// 交行电子邮件账单对账
+async function reconcilBOCOMEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseBOCOMEml(emlFile)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+        getAmount: (item: BankTransaction) => {
+          return item.amount as unknown as number
+        },
+        filterUnreconciled: (item: BankTransaction) => {
+          // 分期扣款暂时不对账
+          return item.summary.includes('分期扣款')
+        },
+      })
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
+// 建行电子邮件账单对账
+async function reconcilCCBEml(emlFile: string) {
+  const {
+    transactionsOfBank,
+  } = await parseCCBEml(emlFile)
+  const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
+
+  await initActual()
+
+  const accounts = await actualApi.getAccounts()
+
+  for (const card of Object.keys(cardGroups)) {
+    console.log(`开始对账尾号${card}的银行卡`)
+    const cardTransactionsOfBank = cardGroups[card]
+    if (cardTransactionsOfBank) {
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
+
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+        getAmount: (item: BankTransaction) => {
+          return item.amount as unknown as number
+        },
+      })
+      console.log(`尾号${card}的银行卡对账结果：`)
+      dealReconcilResults({ unReconcilData, unmatched })
+    }
+  }
+
+  await actualApi.shutdown()
+}
+
+export async function reconcilBankEml() {
+  const answers = await select({
+    message: '请选择银行',
+    choices: ['中国农业银行', '招商银行', '交通银行', '宁波银行', '建设银行'],
+  })
+
+  if (answers === '宁波银行') {
+    console.time('对账耗时')
+    const answers3 = await input({
+      message: '请输入宁波银行账单页面提取JSON',
+    })
+    await parseNBCBWebBills(answers3)
+    console.timeEnd('对账耗时')
+    return
+  }
+
+  const answers2 = await input({
+    message: '请输入账单eml文件路径',
+  })
+
+  console.time('对账耗时')
+  if (answers === '中国农业银行') {
+    await reconcilABCEml(answers2)
+  } else if (answers === '招商银行') {
+    await reconcilCMBEml(answers2)
+  } else if (answers === '交通银行') {
+    await reconcilBOCOMEml(answers2)
+  } else if (answers === '建设银行') {
+    await reconcilCCBEml(answers2)
+  } else {
+    console.log('暂不支持该银行')
+  }
+  console.timeEnd('对账耗时')
+}
