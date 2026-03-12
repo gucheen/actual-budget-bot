@@ -9,6 +9,7 @@ import { initActual } from './actual.ts'
 import type { UUID, Transaction } from './actual.ts'
 import { getMappings } from './mapping.ts'
 import { reconcilBankEml } from './bank-reconcil.ts'
+import type { TransactionEntity } from '@actual-app/api/@types/loot-core/src/types/models/transaction'
 
 dayjs.extend(customParseFormat)
 
@@ -193,8 +194,15 @@ async function importBills(
     const matchTransaction = matchTrans[index]
     if (matchTransaction && matchTransaction.id && !matchTransaction.cleared) {
       const category = CATEGORY_MAP[item['交易分类']] || item['交易分类']
-      const categoryId = category ? categoryNameIds[category] : ''
-      actualApi.updateTransaction(matchTransaction.id, { cleared: true, notes: item['商品说明'] || item['商品'] || '', imported_id: item['交易订单号'] || '', category: categoryId })
+      const patch: Partial<TransactionEntity> = {
+        cleared: true,
+        notes: item['商品说明'] || item['商品'] || '',
+        imported_id: item['交易订单号'] || '',
+      }
+      if (category && categoryNameIds[category]) {
+        patch.category = categoryNameIds[category]
+      }
+      actualApi.updateTransaction(matchTransaction.id, patch)
     }
 
     return !matchTransaction
