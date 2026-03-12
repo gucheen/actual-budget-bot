@@ -128,7 +128,7 @@ async function importWechatBills(billFilePath: string): Promise<{ unmatched: any
         amount: utils.amountToInteger(getWechatAmount(item)),
         payee_name: item['交易对方'],
         notes,
-        transfer_id: item['交易单号'],
+        imported_id: item['交易单号'],
       }
     }))
     await actualApi.shutdown()
@@ -194,7 +194,7 @@ async function importBills(
     if (matchTransaction && matchTransaction.id && !matchTransaction.cleared) {
       const category = CATEGORY_MAP[item['交易分类']] || item['交易分类']
       const categoryId = category ? categoryNameIds[category] : ''
-      actualApi.updateTransaction(matchTransaction.id, { cleared: true, notes: item['商品说明'] || item['商品'] || '', transfer_id: item['交易订单号'] || '', category: categoryId })
+      actualApi.updateTransaction(matchTransaction.id, { cleared: true, notes: item['商品说明'] || item['商品'] || '', imported_id: item['交易订单号'] || '', category: categoryId })
     }
 
     return !matchTransaction
