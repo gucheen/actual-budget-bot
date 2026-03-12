@@ -18,6 +18,15 @@ export interface BankTransaction {
   [key: string]: unknown
 }
 
+const chunkArray = (array: any[], chunkSize: number) => {
+  const numberOfChunks = Math.ceil(array.length / chunkSize)
+
+  return [...Array(numberOfChunks)]
+    .map((value, index) => {
+      return array.slice(index * chunkSize, (index + 1) * chunkSize)
+    })
+}
+
 // 农行电子邮件账单 eml 解析
 export async function parseABCEml(emlfile: string) {
   if (!fs.existsSync(emlfile)) {
@@ -44,33 +53,42 @@ export async function parseABCEml(emlfile: string) {
         const browser = new Browser()
         const page = browser.newPage()
         page.content = html
-        const trs = page.mainFrame.document.body.querySelectorAll('#reportPanel3 #fixBand10 > table > tbody > tr > td > table > tbody > tr')
-        const originalTransactionData = Array.from(trs).map(tr => {
-          return Array.from(tr.querySelectorAll('td')).map(td => td.textContent)
-        })
+        const content = page.mainFrame.document.body.textContent
+        const texts = content.split('\n').map(str => str.trim()).filter(str => str.length > 0)
+        const cardNoStr = texts.at(texts.indexOf('卡号') + 2) || ''
+        const cardNo = cardNoStr.substring(cardNoStr.length - 4)
+        const billDate = texts.indexOf('账单周期') + 2
+        const [billStartStr, billEndStr] = texts.at(billDate)?.split('-') || ['', '']
+        const billStartDate = dayjs(billStartStr, 'YYYY/MM/DD').format('YYMMDD')
+        const billEndDate = dayjs(billEndStr, 'YYYY/MM/DD').format('YYMMDD')
+        const repayIndex = texts.indexOf('还款') + 1
+        const transactionIndex = texts.indexOf('消费') + 1
+        const repayEndIndex = transactionIndex - 3
+        const transactionEndIndex = texts.indexOf('积分统计') - 1
+        const cashBackIndex = texts.indexOf('本期使用刷卡金') + 1
+
+        const originalTransactionData: string[][] = chunkArray(texts.slice(repayIndex, repayEndIndex + 1).concat(texts.slice(transactionIndex, transactionEndIndex + 1)), 6)
+        originalTransactionData.push([billEndDate, billEndDate, cardNo, '本期使用刷卡金', `${texts.at(cashBackIndex)}/CNY`, `${texts.at(cashBackIndex)}/CNY`])
 
         await browser.close()
 
         /**
          * [
-         * 空白,
          * 交易日,
          * 入账日,
          * 卡号后四位,
          * 交易摘要,
-         * 交易地点,
          * 交易金额/币种,
          * 入账金额/币种（支出为-),
          * ]
          */
 
         const transactionsOfBank: BankTransaction[] = originalTransactionData.map(transaction => {
-          const [_, date, __, card, summary, location, balance, amount] = transaction
+          const [date, __, card, summary, balance, amount] = transaction
           return {
-            date: dayjs(date, 'YYYYMMDD').format('YYYY-MM-DD'),
+            date: dayjs(date, 'YYMMDD').format('YYYY-MM-DD'),
             card,
             summary,
-            location,
             amount,
             balance,
           }

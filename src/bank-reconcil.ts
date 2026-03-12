@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import actualApi from '@actual-app/api'
-import inquirer from 'inquirer'
+import { select, input } from '@inquirer/prompts'
 import { initActual, type Transaction } from './actual.ts'
 import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
 import { parseABCEml, parseBOCOMEml, parseCCBEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
@@ -13,9 +13,9 @@ export async function reconcilBills(
   data: BankTransaction[],
   accountId: string,
   processor: {
-    getAmount: (item: BankTransaction) => number;
+    getAmount: (item: BankTransaction) => number
     // 过滤掉不需要对账的交易
-    filterUnreconciled?: (item: BankTransaction) => boolean;
+    filterUnreconciled?: (item: BankTransaction) => boolean
   }
 ): Promise<{ unmatched: BankTransaction[], unReconcilData: BankTransaction[] }> {
   if (!Array.isArray(data) || data.length === 0) {
@@ -79,19 +79,15 @@ async function reconcilABCEml(emlFile: string) {
     console.log(`开始对账尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
-      const answers = await inquirer.prompt([
-        {
-          type: 'select',
-          choices: accounts.map((account) => ({
-            name: account.name,
-            value: account.id,
-          })),
-          name: 'accountId',
-          message: `请选择尾号${card}的银行卡对应的Actual账户`,
-        },
-      ])
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           const [tradeAmount, currency] = typeof item.amount === 'string' ? item.amount.split('/') : []
           return Number(tradeAmount.trim())
@@ -101,7 +97,7 @@ async function reconcilABCEml(emlFile: string) {
         const unAccountCashback = unmatched.filter((item) => item.summary === '刷卡金转入')
         if (unAccountCashback.length > 0) {
           console.log(`将对 ${unAccountCashback.length} 条未记账的返现交易进行追加记录`)
-          const results = await actualApi.addTransactions(answers.accountId, unAccountCashback.map((item) => {
+          const results = await actualApi.addTransactions(answers, unAccountCashback.map((item) => {
             const [tradeAmount, currency] = typeof item.amount === 'string' ? item.amount.split('/') : []
             return {
               date: item.date,
@@ -141,19 +137,15 @@ async function reconcilCMBEml(emlFile: string) {
     console.log(`开始对账尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
-      const answers = await inquirer.prompt([
-        {
-          type: 'select',
-          choices: accounts.map((account) => ({
-            name: account.name,
-            value: account.id,
-          })),
-          name: 'accountId',
-          message: `请选择尾号${card}的银行卡对应的Actual账户`,
-        },
-      ])
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -181,19 +173,15 @@ async function reconcilBOCOMEml(emlFile: string) {
     console.log(`开始对账尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
-      const answers = await inquirer.prompt([
-        {
-          type: 'select',
-          choices: accounts.map((account) => ({
-            name: account.name,
-            value: account.id,
-          })),
-          name: 'accountId',
-          message: `请选择尾号${card}的银行卡对应的Actual账户`,
-        },
-      ])
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -225,19 +213,15 @@ async function reconcilCCBEml(emlFile: string) {
     console.log(`开始对账尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
-      const answers = await inquirer.prompt([
-        {
-          type: 'select',
-          choices: accounts.map((account) => ({
-            name: account.name,
-            value: account.id,
-          })),
-          name: 'accountId',
-          message: `请选择尾号${card}的银行卡对应的Actual账户`,
-        },
-      ])
+      const answers = await select({
+        choices: accounts.map((account) => ({
+          name: account.name,
+          value: account.id,
+        })),
+        message: `请选择尾号${card}的银行卡对应的Actual账户`,
+      })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -262,35 +246,27 @@ export async function reconcilBankEml() {
 
   if (answers.bank === '宁波银行') {
     console.time('对账耗时')
-    const answers3 = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'webBillJSON',
-        message: '请输入宁波银行账单页面提取JSON',
-      },
-    ])
-    await parseNBCBWebBills(answers3.webBillJSON)
+    const answers3 = await input({
+      message: '请输入宁波银行账单页面提取JSON',
+    })
+    await parseNBCBWebBills(answers3)
     console.timeEnd('对账耗时')
     return
   }
 
-  const answers2 = await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'emlFilePath',
-      message: '请输入账单eml文件路径',
-    },
-  ])
+  const answers2 = await input({
+    message: '请输入账单eml文件路径',
+  })
 
   console.time('对账耗时')
   if (answers.bank === '中国农业银行') {
-    await reconcilABCEml(answers2.emlFilePath)
+    await reconcilABCEml(answers2)
   } else if (answers.bank === '招商银行') {
-    await reconcilCMBEml(answers2.emlFilePath)
+    await reconcilCMBEml(answers2)
   } else if (answers.bank === '交通银行') {
-    await reconcilBOCOMEml(answers2.emlFilePath)
+    await reconcilBOCOMEml(answers2)
   } else if (answers.bank === '建设银行') {
-    await reconcilCCBEml(answers2.emlFilePath)
+    await reconcilCCBEml(answers2)
   } else {
     console.log('暂不支持该银行')
   }

@@ -1,10 +1,10 @@
-import actualApi, { q, runQuery } from '@actual-app/api'
+import actualApi, { aqlQuery, q } from '@actual-app/api'
 import csv from 'csv-parser'
 import fs from 'node:fs'
 import path from 'node:path'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-import inquirer from 'inquirer'
+import { select, input } from '@inquirer/prompts'
 import { initActual } from './actual.ts'
 import type { UUID, Transaction } from './actual.ts'
 import { getMappings } from './mapping.ts'
@@ -105,11 +105,11 @@ async function reconcilWechatBills(billFilePath: string): Promise<{ unmatched: a
 async function reconcilBills(
   billFilePath: string,
   processor: {
-    readCSVOptions: { skipLines: number; logMessage: string };
-    getAccountName: (item: any) => string;
-    getAmount: (item: any) => number;
+    readCSVOptions: { skipLines: number; logMessage: string }
+    getAccountName: (item: any) => string
+    getAmount: (item: any) => number
     // 过滤掉不需要对账的交易
-    filterUnreconciled?: (item: any) => boolean;
+    filterUnreconciled?: (item: any) => boolean
   }
 ): Promise<{ unmatched: any[], unReconcilData: any[] }> {
   const data = await readCSV(billFilePath, processor.readCSVOptions)
@@ -120,7 +120,7 @@ async function reconcilBills(
   const startDate = data[data.length - 1]['交易时间'].substring(0, 10)
 
   console.log(`账单日期范围：${startDate} ~ ${endDate}`)
-  const transactions: Transaction[] = (await runQuery(q('transactions').filter({ date: { $gte: startDate, $lte: endDate } }).select('*' as any)) as any).data
+  const transactions: Transaction[] = (await aqlQuery(q('transactions').filter({ date: { $gte: startDate, $lte: endDate } }).select('*' as any)) as any).data
   console.log(`actual budget 对应日期范围共 ${transactions.length} 条交易`)
 
   // 这个map用来记录同一天多笔相同支付账户和金额的交易
@@ -187,30 +187,22 @@ if (import.meta.url.replaceAll(path.sep, path.posix.sep).endsWith(process.argv[1
   // 清空终端
   process.stdout.write('\x1Bc')
 
-  const answers1 = await inquirer.prompt([
-    {
-      type: 'list',
-      name: 'app',
-      message: '选择账单对应的支付应用',
-      choices: ['支付宝', '微信支付', '银行邮件账单'],
-    },
-  ])
-  if (answers1.app === '银行邮件账单') {
+  const answers1 = await select({
+    message: '选择账单对应的支付应用',
+    choices: ['支付宝', '微信支付', '银行邮件账单'],
+  })
+  if (answers1 === '银行邮件账单') {
     reconcilBankEml()
   } else {
-    const answers2 = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'billFilePath',
-        message: '请输入账单CSV文件路径',
-      },
-    ])
+    const answers2 = await input({
+      message: '请输入账单CSV文件路径',
+    })
     console.time('对账耗时')
-    if (answers1.app === '支付宝') {
-      const results = await reconcilAlipayBills(answers2.billFilePath)
+    if (answers1 === '支付宝') {
+      const results = await reconcilAlipayBills(answers2)
       dealReconcilResults(results)
-    } else if (answers1.app === '微信支付') {
-      const results = await reconcilWechatBills(answers2.billFilePath)
+    } else if (answers1 === '微信支付') {
+      const results = await reconcilWechatBills(answers2)
       dealReconcilResults(results)
     } else {
       console.log('暂不支持该应用')

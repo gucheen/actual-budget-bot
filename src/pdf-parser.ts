@@ -1,5 +1,5 @@
 import actualApi from '@actual-app/api'
-import inquirer from 'inquirer'
+import { select } from '@inquirer/prompts'
 import PDFParser from 'pdf2json'
 import { reconcilBills } from './bank-reconcil.ts'
 import { dealReconcilResults } from './reconcil.ts'
@@ -54,19 +54,15 @@ export async function parseCMBPDF(pdfFile: string) {
     await initActual()
 
     const accounts = await actualApi.getAccounts()
-    const answers = await inquirer.prompt([
-      {
-        type: 'select',
-        choices: accounts.map((account) => ({
-          name: account.name,
-          value: account.id,
-        })),
-        name: 'accountId',
-        message: `请选择银行卡对应的Actual账户`,
-      },
-    ])
+    const answers = await select({
+      choices: accounts.map((account) => ({
+        name: account.name,
+        value: account.id,
+      })),
+      message: `请选择银行卡对应的Actual账户`,
+    })
 
-    const results = await reconcilBills(transactions, answers.accountId, {
+    const results = await reconcilBills(transactions, answers, {
       getAmount: (item: any) => Number(item.amount.replaceAll(',', '')),
       filterUnreconciled: (item: any) => typeof item.summary === 'string' && item.summary.includes('朝朝宝'),
     })
@@ -153,18 +149,14 @@ export async function parseCITICPDF(pdfFile: string) {
       console.log(`开始对账尾号${card}的银行卡`)
       const cardTransactionsOfBank = cardGroups[card]
       if (cardTransactionsOfBank) {
-        const answers = await inquirer.prompt([
-          {
-            type: 'select',
-            choices: accounts.map((account) => ({
-              name: account.name,
-              value: account.id,
-            })),
-            name: 'accountId',
-            message: `请选择尾号${card}的银行卡对应的Actual账户`,
-          },
-        ])
-        const results = await reconcilBills(cardTransactionsOfBank, answers.accountId, {
+        const answers = await select({
+          choices: accounts.map((account) => ({
+            name: account.name,
+            value: account.id,
+          })),
+          message: `请选择尾号${card}的银行卡对应的Actual账户`,
+        })
+        const results = await reconcilBills(cardTransactionsOfBank, answers, {
           getAmount: (item: any) => -Number(item.amount.replaceAll(',', '')),
         })
 

@@ -1,8 +1,11 @@
-import actualApi, { runQuery, q } from '@actual-app/api'
+import { loadEnvFile } from 'node:process'
+import actualApi, { aqlQuery, q } from '@actual-app/api'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import { getMappings } from './mapping.ts'
 dayjs.extend(customParseFormat)
+
+loadEnvFile()
 
 export type UUID = string
 
@@ -25,11 +28,11 @@ export interface Transaction {
 export async function initActual() {
   await actualApi.init({
     dataDir: './actual-data',
-    serverURL: process.env.actual_server,
-    password: process.env.actual_password,
+    serverURL: process.env.actual_server!,
+    password: process.env.actual_password!,
   })
 
-  await actualApi.downloadBudget(process.env.actual_budget_id, {
+  await actualApi.downloadBudget(process.env.actual_budget_id!, {
     password: process.env.actual_encrypted_password,
   })
 }
@@ -65,7 +68,7 @@ export const addActualTransaction = async (trasnactionData: {
   const {
     PAYEE_MAP,
     ACCOUNT_NAME_MAP,
-    CATEGORP_MAP,
+    CATEGORY_MAP,
   } = getMappings()
 
   // 对支付对象（商家）的名称做映射，以解决不同平台、场景下同一个支付对象显示不同名称的情况
@@ -85,7 +88,7 @@ export const addActualTransaction = async (trasnactionData: {
   console.log('matchAccount', matchAccount)
 
   if (importedID) {
-    const dulplicatedTransaction = await runQuery(q('transactions').filter({ account: matchAccount.id, imported_id: importedID, date, amount }).select(['*'])) as { data: Transaction[], dependencies: string[] }
+    const dulplicatedTransaction = await aqlQuery(q('transactions').filter({ account: matchAccount.id, imported_id: importedID, date, amount }).select(['*'])) as { data: Transaction[], dependencies: string[] }
     if (dulplicatedTransaction && Array.isArray(dulplicatedTransaction.data) && dulplicatedTransaction.data.length > 0) {
       console.log('dulplicatedTransaction', dulplicatedTransaction)
       throw new Error(`已经存在相同的交易，imported_id：${importedID}`)
@@ -105,7 +108,7 @@ export const addActualTransaction = async (trasnactionData: {
   // 目前只允许配置了映射的分类，其他分类不支持
   if (category) {
     // 对分类的名称做映射，以解决不同平台、场景下同一个分类显示不同名称的情况
-    const formatCategory = CATEGORP_MAP[category] || category
+    const formatCategory = CATEGORY_MAP[category] || category
     const categories = await actualApi.getCategories()
     const matchCategory = await categories.find(category => category.name === formatCategory)
     if (matchCategory) {
