@@ -1,7 +1,7 @@
-import actualApi from '@actual-app/api'
+import actualApi, { utils } from '@actual-app/api'
 import { select } from '@inquirer/prompts'
 import PDFParser from 'pdf2json'
-import { reconcilBills } from './bank-reconcil.ts'
+import { importBills } from './bank-import.ts'
 import { dealReconcilResults } from './reconcil.ts'
 import { initActual } from './actual.ts'
 import dayjs from 'dayjs'
@@ -54,7 +54,7 @@ export async function parseCMBPDF(pdfFile: string) {
     await initActual()
 
     const accounts = await actualApi.getAccounts()
-    const answers = await select({
+    const accountId = await select({
       choices: accounts.map((account) => ({
         name: account.name,
         value: account.id,
@@ -62,10 +62,21 @@ export async function parseCMBPDF(pdfFile: string) {
       message: `请选择银行卡对应的Actual账户`,
     })
 
-    const results = await reconcilBills(transactions, answers, {
+    const results = await importBills(transactions, accountId, {
       getAmount: (item: any) => Number(item.amount.replaceAll(',', '')),
       filterUnreconciled: (item: any) => typeof item.summary === 'string' && item.summary.includes('朝朝宝'),
     })
+
+    if (Array.isArray(results.unmatched) && results.unmatched.length > 0) {
+      await actualApi.addTransactions(accountId, results.unmatched.map(item => {
+        return {
+          date: item.date,
+          amount: utils.amountToInteger(Number(item.amount.replaceAll(',', ''))),
+          notes: item.summary,
+          payee_name: item.payee as string,
+        }
+      }))
+    }
 
     await actualApi.shutdown()
 
@@ -156,7 +167,7 @@ export async function parseCITICPDF(pdfFile: string) {
           })),
           message: `请选择尾号${card}的银行卡对应的Actual账户`,
         })
-        const results = await reconcilBills(cardTransactionsOfBank, answers, {
+        const results = await importBills(cardTransactionsOfBank, answers, {
           getAmount: (item: any) => -Number(item.amount.replaceAll(',', '')),
         })
 

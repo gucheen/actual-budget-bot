@@ -3,13 +3,13 @@ import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import actualApi, { utils } from '@actual-app/api'
 import { input, select } from '@inquirer/prompts'
 import { initActual, type Transaction } from './actual.ts'
-import { createKeyForTransaction, dealReconcilResults } from './reconcil.ts'
+import { createKeyForTransaction, dealReconcilResults } from './import.ts'
 import { parseABCEml, parseBOCOMEml, parseCCBEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
 import { parseNBCBWebBills } from './banks/nbcb.ts'
 
 dayjs.extend(customParseFormat)
 
-export async function reconcilBills(
+export async function importBills(
   data: BankTransaction[],
   accountId: string,
   processor: {
@@ -93,7 +93,7 @@ async function reconcilABCEml(emlFile: string) {
         return Number(tradeAmount.trim())
       }
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+      const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount,
       })
       if (Array.isArray(unmatched) && unmatched.length > 0) {
@@ -137,7 +137,7 @@ async function reconcilCMBEml(emlFile: string) {
         message: `请选择尾号${card}的银行卡对应的Actual账户`,
       })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+      const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -173,7 +173,7 @@ async function reconcilBOCOMEml(emlFile: string) {
         message: `请选择尾号${card}的银行卡对应的Actual账户`,
       })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+      const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -213,7 +213,7 @@ async function reconcilCCBEml(emlFile: string) {
         message: `请选择尾号${card}的银行卡对应的Actual账户`,
       })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+      const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
@@ -226,7 +226,7 @@ async function reconcilCCBEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
-export async function reconcilBankEml() {
+export async function importBankEML() {
   const answers = await select({
     message: '请选择银行',
     choices: ['中国农业银行', '招商银行', '交通银行', '宁波银行', '建设银行'],

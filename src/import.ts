@@ -8,7 +8,7 @@ import { confirm, input, select } from '@inquirer/prompts'
 import { initActual } from './actual.ts'
 import type { UUID, Transaction } from './actual.ts'
 import { getMappings } from './mapping.ts'
-import { reconcilBankEml } from './bank-reconcil.ts'
+import { importBankEML } from './bank-import.ts'
 import type { TransactionEntity } from '@actual-app/api/@types/loot-core/src/types/models/transaction'
 
 dayjs.extend(customParseFormat)
@@ -240,7 +240,7 @@ if (import.meta.url.replaceAll(path.sep, path.posix.sep).endsWith(process.argv[1
     choices: ['支付宝', '微信支付', '银行邮件账单'],
   })
   if (answers1 === '银行邮件账单') {
-    reconcilBankEml()
+    importBankEML()
   } else {
     const answers2 = await input({
       message: '请输入账单CSV文件路径',
