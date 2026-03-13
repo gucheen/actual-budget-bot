@@ -128,6 +128,7 @@ async function importWechatBills(billFilePath: string): Promise<{ unmatched: any
         date: item['交易时间'].substring(0, 10),
         amount: utils.amountToInteger(getWechatAmount(item)),
         payee_name: item['交易对方'],
+        imported_payee: item['交易对方'],
         notes,
         imported_id: item['交易单号'],
       }
