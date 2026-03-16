@@ -217,20 +217,16 @@ export async function parseBOCOMEml(emlfile: string) {
     const browser = new Browser()
     const page = browser.newPage()
     page.content = html
-    const repayListTrs = page.mainFrame.document.body.querySelectorAll('#repayList table tbody tr')
-    const takeListTrs = page.mainFrame.document.body.querySelectorAll('#takeList table tbody tr')
-    const repayList = Array.from(repayListTrs).map(tr => {
-      return Array.from(tr.children).map(child => child.textContent)
-    })
-    const takeList = Array.from(takeListTrs).map(tr => {
-      return Array.from(tr.children).map(child => child.textContent)
-    })
+    const strings = page.mainFrame.document.body.textContent.split('\n').map(str => str.trim()).filter(str => str.length > 0)
+    const repayTitleIndex = strings.indexOf('还款、退货、费用返还明细')
+    const transactionTitleIndex = strings.indexOf('消费、取现、其他费用明细')
+    const repayListTrs = chunkArray(strings.slice(repayTitleIndex + 7, transactionTitleIndex), 6)
+    const takeListTrs = chunkArray(strings.slice(transactionTitleIndex + 8, strings.indexOf('用卡无忧尊享版')), 6)
 
     await browser.close()
 
     /**
      * [
-     * 空白,
      * 交易日,
      * 记账日,
      * 卡号后四位,
@@ -239,9 +235,9 @@ export async function parseBOCOMEml(emlfile: string) {
      * CNY入账金额,
      * ]
      */
-    const transactionsOfBank: BankTransaction[] = repayList.map((trans) => {
+    const transactionsOfBank: BankTransaction[] = repayListTrs.map((trans) => {
       // 优先使用交易日
-      const [_, tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
+      const [tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
       // 前三位是交易金额的符号，需要去掉
       const amountStr = tradeAmountStr.substring(3)
       const amount = Number(amountStr)
@@ -252,9 +248,9 @@ export async function parseBOCOMEml(emlfile: string) {
         card,
         originalAmount: originalAmountStr.substring(3),
       }
-    }).concat(takeList.map((trans) => {
+    }).concat(takeListTrs.map((trans) => {
       // 优先使用交易日
-      const [_, tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
+      const [tradeDate, recordDate, card, summary, tradeAmountStr, originalAmountStr] = trans
       // 前三位是交易金额的符号，需要去掉
       const amountStr = tradeAmountStr.substring(3)
       const amount = -Number(amountStr)

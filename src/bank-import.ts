@@ -61,7 +61,17 @@ export async function importBills(
     return !matchTransaction
   })
 
-  return { unmatched, unReconcilData }
+  if (Array.isArray(unmatched) && unmatched.length > 0) {
+    await actualApi.addTransactions(accountId, unmatched.map(item => {
+      return {
+        date: item.date,
+        notes: item.summary,
+        amount: utils.amountToInteger(processor.getAmount(item)),
+      }
+    }))
+  }
+
+  return { unmatched: [], unReconcilData }
 }
 
 // 农行电子邮件账单对账
@@ -77,7 +87,7 @@ async function reconcilABCEml(emlFile: string) {
   const accounts = await actualApi.getAccounts()
 
   for (const card of Object.keys(cardGroups)) {
-    console.log(`开始对账尾号${card}的银行卡`)
+    console.log(`开始导入尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
       const answers = await select({
@@ -96,16 +106,7 @@ async function reconcilABCEml(emlFile: string) {
       const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount,
       })
-      if (Array.isArray(unmatched) && unmatched.length > 0) {
-        actualApi.addTransactions(answers, unmatched.map(item => {
-          return {
-            date: item.date,
-            notes: item.summary,
-            amount: utils.amountToInteger(getAmount(item)),
-          }
-        }))
-      }
-      console.log(`尾号${card}的银行卡对账结果：`)
+      console.log(`尾号${card}的银行卡导入结果：`)
       dealReconcilResults({ unReconcilData, unmatched })
     }
   }
@@ -126,7 +127,7 @@ async function reconcilCMBEml(emlFile: string) {
 
   // 招行信报合一，多张卡一份账单
   for (const card of Object.keys(cardGroups)) {
-    console.log(`开始对账尾号${card}的银行卡`)
+    console.log(`开始导入尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
       const answers = await select({
@@ -142,7 +143,7 @@ async function reconcilCMBEml(emlFile: string) {
           return item.amount as unknown as number
         },
       })
-      console.log(`尾号${card}的银行卡对账结果：`)
+      console.log(`尾号${card}的银行卡导入结果：`)
       dealReconcilResults({ unReconcilData, unmatched })
     }
   }
@@ -162,7 +163,7 @@ async function reconcilBOCOMEml(emlFile: string) {
   const accounts = await actualApi.getAccounts()
 
   for (const card of Object.keys(cardGroups)) {
-    console.log(`开始对账尾号${card}的银行卡`)
+    console.log(`开始导入尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
       const answers = await select({
@@ -177,12 +178,8 @@ async function reconcilBOCOMEml(emlFile: string) {
         getAmount: (item: BankTransaction) => {
           return item.amount as unknown as number
         },
-        filterUnreconciled: (item: BankTransaction) => {
-          // 分期扣款暂时不对账
-          return item.summary.includes('分期扣款')
-        },
       })
-      console.log(`尾号${card}的银行卡对账结果：`)
+      console.log(`尾号${card}的银行卡导入结果：`)
       dealReconcilResults({ unReconcilData, unmatched })
     }
   }
@@ -202,7 +199,7 @@ async function reconcilCCBEml(emlFile: string) {
   const accounts = await actualApi.getAccounts()
 
   for (const card of Object.keys(cardGroups)) {
-    console.log(`开始对账尾号${card}的银行卡`)
+    console.log(`开始导入尾号${card}的银行卡`)
     const cardTransactionsOfBank = cardGroups[card]
     if (cardTransactionsOfBank) {
       const answers = await select({
@@ -218,7 +215,7 @@ async function reconcilCCBEml(emlFile: string) {
           return item.amount as unknown as number
         },
       })
-      console.log(`尾号${card}的银行卡对账结果：`)
+      console.log(`尾号${card}的银行卡导入结果：`)
       dealReconcilResults({ unReconcilData, unmatched })
     }
   }
@@ -233,12 +230,12 @@ export async function importBankEML() {
   })
 
   if (answers === '宁波银行') {
-    console.time('对账耗时')
+    console.time('账单导入耗时')
     const answers3 = await input({
       message: '请输入宁波银行账单页面提取JSON',
     })
     await parseNBCBWebBills(answers3)
-    console.timeEnd('对账耗时')
+    console.timeEnd('账单导入耗时')
     return
   }
 
@@ -246,7 +243,7 @@ export async function importBankEML() {
     message: '请输入账单eml文件路径',
   })
 
-  console.time('对账耗时')
+  console.time('账单导入耗时')
   if (answers === '中国农业银行') {
     await reconcilABCEml(answers2)
   } else if (answers === '招商银行') {
@@ -258,5 +255,5 @@ export async function importBankEML() {
   } else {
     console.log('暂不支持该银行')
   }
-  console.timeEnd('对账耗时')
+  console.timeEnd('账单导入耗时')
 }

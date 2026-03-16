@@ -245,7 +245,7 @@ if (import.meta.url.replaceAll(path.sep, path.posix.sep).endsWith(process.argv[1
     const answers2 = await input({
       message: '请输入账单CSV文件路径',
     })
-    console.time('导入耗时')
+    console.time('账单导入耗时')
     if (answers1 === '支付宝') {
       const results = await importAlipayBills(answers2)
       dealReconcilResults(results)
@@ -255,6 +255,6 @@ if (import.meta.url.replaceAll(path.sep, path.posix.sep).endsWith(process.argv[1
     } else {
       console.log('暂不支持该应用')
     }
-    console.timeEnd('导入耗时')
+    console.timeEnd('账单导入耗时')
   }
 }
