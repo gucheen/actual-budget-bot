@@ -5,7 +5,7 @@ import fs from 'node:fs'
 import util from 'node:util'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-import { parse } from 'node-html-parser'
+import { chunkArray } from './utils.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -16,98 +16,6 @@ export interface BankTransaction {
   location?: string
   card?: string
   [key: string]: unknown
-}
-
-const chunkArray = (array: any[], chunkSize: number) => {
-  const numberOfChunks = Math.ceil(array.length / chunkSize)
-
-  return [...Array(numberOfChunks)]
-    .map((value, index) => {
-      return array.slice(index * chunkSize, (index + 1) * chunkSize)
-    })
-}
-
-// 农行电子邮件账单 eml 解析
-export async function parseABCEml(emlfile: string) {
-  if (!fs.existsSync(emlfile)) {
-    console.error('eml 文件不存在')
-    process.exit(1)
-  }
-
-  const content = fs.readFileSync(emlfile, 'utf-8')
-
-  const emlJson = readEml(content) as ReadedEmlJson
-
-  if (Array.isArray(emlJson.attachments)) {
-    for (const att of emlJson.attachments) {
-      if (att.contentType.includes('Text/HTML') && att.data64) {
-        let html = ''
-        const body = Buffer.from(att.data64, 'base64')
-        if (typeof att.contentType === 'string' && (att.contentType.includes('gbk') || att.contentType.includes('gb2312'))) {
-          const decoder = new util.TextDecoder('gbk')
-          html = decoder.decode(body)
-          html = html.replace("<meta http-equiv='Content-Type' content='text/html;charset=gbk'>", "<meta http-equiv='Content-Type' content='text/html;charset=utf-8'>")
-        } else {
-          html = body.toString()
-        }
-        const browser = new Browser()
-        const page = browser.newPage()
-        page.content = html
-        const content = page.mainFrame.document.body.textContent
-        const texts = content.split('\n').map(str => str.trim()).filter(str => str.length > 0)
-        const cardNoStr = texts.at(texts.indexOf('卡号') + 2) || ''
-        const cardNo = cardNoStr.substring(cardNoStr.length - 4)
-        const billDate = texts.indexOf('账单周期') + 2
-        const [billStartStr, billEndStr] = texts.at(billDate)?.split('-') || ['', '']
-        const billStartDate = dayjs(billStartStr, 'YYYY/MM/DD').format('YYMMDD')
-        const billEndDate = dayjs(billEndStr, 'YYYY/MM/DD').format('YYMMDD')
-        const repayIndex = texts.indexOf('还款') + 1
-        const transactionIndex = texts.indexOf('消费') + 1
-        const repayEndIndex = transactionIndex - 3
-        const transactionEndIndex = texts.indexOf('积分统计') - 1
-        const cashBackIndex = texts.indexOf('本期使用刷卡金') + 1
-
-        const originalTransactionData: string[][] = chunkArray(texts.slice(repayIndex, repayEndIndex + 1).concat(texts.slice(transactionIndex, transactionEndIndex + 1)), 6)
-        originalTransactionData.push([billEndDate, billEndDate, cardNo, '本期使用刷卡金', `${texts.at(cashBackIndex)}/CNY`, `${texts.at(cashBackIndex)}/CNY`])
-
-        await browser.close()
-
-        /**
-         * [
-         * 交易日,
-         * 入账日,
-         * 卡号后四位,
-         * 交易摘要,
-         * 交易金额/币种,
-         * 入账金额/币种（支出为-),
-         * ]
-         */
-
-        const transactionsOfBank: BankTransaction[] = originalTransactionData.map(transaction => {
-          const [date, __, card, summary, balance, amount] = transaction
-          return {
-            date: dayjs(date, 'YYMMDD').format('YYYY-MM-DD'),
-            card,
-            summary,
-            amount,
-            balance,
-          }
-        })
-
-        return {
-          transactionsOfBank,
-          html,
-          emlJson,
-        }
-      }
-    }
-  }
-
-  return {
-    transactionsOfBank: [],
-    html: '',
-    emlJson,
-  }
 }
 
 type CMBTransactionType = '' | '还款' | '分期' | '消费'
@@ -267,66 +175,6 @@ export async function parseBOCOMEml(emlfile: string) {
       transactionsOfBank,
       html,
       emlJson,
-    }
-  }
-  return {
-    transactionsOfBank: [],
-    html: '',
-    emlJson,
-  }
-}
-
-// 建设银行电子邮件账单 eml 解析
-export async function parseCCBEml(emlfile: string) {
-  if (!fs.existsSync(emlfile)) {
-    console.error('eml 文件不存在')
-    process.exit(1)
-  }
-
-  const content = fs.readFileSync(emlfile, 'utf-8')
-
-  const emlJson = readEml(content) as ReadedEmlJson
-
-  if (typeof emlJson.html === 'string') {
-    const html = emlJson.html
-
-    const root = parse(html)
-    const target = Array.from(root.querySelectorAll('table')).find(table => table.querySelector('tr')?.textContent.includes('【交易明细】'))
-    if (target) {
-
-      /**
-     * [
-     * 交易日,
-     * 记账日,
-     * 卡号后四位,
-     * 交易描述,
-     * 交易币种,
-     * 交易金额,
-     * 结算币种,
-     * 结算金额,
-     * ]
-     */
-      const transactionsOfBank = Array.from(target.querySelectorAll('tr')).slice(4, -1).map(tr => {
-        const [date, pDate, card, summary, tradeCurrency, tradeAmount, clearCurrency, clearAmount] = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim())
-
-        return {
-          date: date || pDate,
-          card,
-          summary,
-          // 建行支出记为正数，收入记为负数
-          amount: -Number(clearAmount.replace(',', '')),
-          tradeCurrency,
-          tradeAmount,
-          clearCurrency,
-          clearAmount,
-        }
-      })
-
-      return {
-        transactionsOfBank,
-        html,
-        emlJson,
-      }
     }
   }
   return {

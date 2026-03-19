@@ -12,6 +12,7 @@
     "import": "node --env-file .env src/import.ts"
   },
   "devDependencies": {
+    "@types/big.js": "^6.2.2",
     "@types/node": "^25.5.0",
     "typescript": "^5.9.3"
   },
@@ -19,6 +20,7 @@
     "@actual-app/api": "^26.3.0",
     "@fastify/multipart": "^9.4.0",
     "@inquirer/prompts": "^8.3.2",
+    "big.js": "^7.0.1",
     "csv-parser": "^3.2.0",
     "dayjs": "^1.11.20",
     "eml-parse-js": "^1.2.0-beta.1",
@@ -27,6 +29,7 @@
     "happy-dom": "^20.8.4",
     "nanoid": "^5.1.7",
     "node-html-parser": "^7.1.0",
-    "pdf2json": "^4.0.2"
+    "pdf2json": "^4.0.2",
+    "undici": "^7.24.4"
   }
 }
