@@ -9,7 +9,6 @@
     "start-docker": "node src/index.ts",
     "dev": "node --env-file .env --watch src/index.ts",
     "test": "node --env-file .env test/ocr.test.ts",
-    "reconcil": "node --env-file .env src/reconcil.ts",
     "import": "node --env-file .env src/import.ts"
   },
   "devDependencies": {
