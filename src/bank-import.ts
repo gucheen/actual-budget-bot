@@ -67,6 +67,7 @@ export async function importBills(
         date: item.date,
         notes: item.summary,
         amount: utils.amountToInteger(processor.getAmount(item)),
+        cleared: false,
       }
     }))
   }

@@ -2,14 +2,14 @@ import actualApi from '@actual-app/api'
 import { select } from '@inquirer/prompts'
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
-import { reconcilBills } from '../bank-reconcil.ts'
 import { initActual } from '../actual.ts'
-import { dealReconcilResults } from '../reconcil.ts'
+import { dealReconcilResults } from '../import.ts'
+import { importBills } from '../bank-import.ts'
 
 dayjs.extend(customParseFormat)
 
 export async function parseNBCBWebBills(billJSON: string) {
-  const transactions = JSON.parse(billJSON)
+  const transactions = JSON.parse(billJSON.startsWith('\'') ? billJSON.substring(1, billJSON.length - 1) : billJSON)
 
   transactions.forEach((transaction: any) => {
     transaction.date = dayjs(transaction.datetime, 'MM-DD HH:mm').format('YYYY-MM-DD')
@@ -38,7 +38,7 @@ export async function parseNBCBWebBills(billJSON: string) {
         message: `请选择尾号${card}的银行卡对应的Actual账户`,
       })
 
-      const { unReconcilData, unmatched } = await reconcilBills(cardTransactionsOfBank, answers, {
+      const { unReconcilData, unmatched } = await importBills(cardTransactionsOfBank, answers, {
         getAmount: (item: any) => {
           return item.amount
         },
