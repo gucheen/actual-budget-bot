@@ -8,6 +8,7 @@ import { parseBOCOMEml, parseCMBEml, type BankTransaction } from './eml-parser.t
 import { parseNBCBWebBills } from './nbcb/nbcb.ts'
 import { importABCEml } from './abc/index.ts'
 import { importCCBEml } from './ccb/index.ts'
+import { importICBCEml } from './icbc/index.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -153,7 +154,7 @@ async function importBOCOMEml(emlFile: string) {
 export async function importBankEML() {
   const bank = await select({
     message: '请选择银行',
-    choices: ['中国农业银行', '招商银行', '交通银行', '宁波银行', '建设银行'],
+    choices: ['农业银行', '招商银行', '交通银行', '宁波银行', '建设银行', '工商银行'],
   })
 
   if (bank === '宁波银行') {
@@ -171,7 +172,7 @@ export async function importBankEML() {
   })
 
   console.time('账单导入耗时')
-  if (bank === '中国农业银行') {
+  if (bank === '农业银行') {
     await importABCEml(emlPath)
   } else if (bank === '招商银行') {
     await importCMBEml(emlPath)
@@ -179,6 +180,8 @@ export async function importBankEML() {
     await importBOCOMEml(emlPath)
   } else if (bank === '建设银行') {
     await importCCBEml(emlPath)
+  } else if (bank === '工商银行') {
+    await importICBCEml(emlPath)
   } else {
     console.log('暂不支持该银行')
   }
