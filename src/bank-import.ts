@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat.js'
 import actualApi, { utils } from '@actual-app/api'
-import { input, select } from '@inquirer/prompts'
+import { confirm, input, select } from '@inquirer/prompts'
 import { initActual, type Transaction } from './actual.ts'
 import { createKeyForTransaction, dealReconcilResults } from './import.ts'
 import { parseBOCOMEml, parseCMBEml, type BankTransaction } from './eml-parser.ts'
@@ -11,6 +11,8 @@ import { importCCBEml } from './ccb/index.ts'
 import { importICBCEml } from './icbc/index.ts'
 import { importBOSCEml } from './bosc/index.ts'
 import { importCITICEml } from './citic/index.ts'
+import path from 'node:path'
+import { importNJCBEml } from './njcb/index.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -153,26 +155,10 @@ async function importBOCOMEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
-export async function importBankEML() {
-  const bank = await select({
-    message: '请选择银行',
-    choices: ['农业银行', '招商银行', '交通银行', '宁波银行', '建设银行', '工商银行', '上海银行', '中信银行'],
-  })
+const SUPPORTED_BANKS = ['农业银行', '招商银行', '交通银行', '宁波银行', '建设银行', '工商银行', '上海银行', '中信银行', '南京银行'] as const
+type Bank = typeof SUPPORTED_BANKS[number]
 
-  if (bank === '宁波银行') {
-    console.time('账单导入耗时')
-    const nbcbJSON = await input({
-      message: '请输入宁波银行账单页面提取JSON',
-    })
-    await parseNBCBWebBills(nbcbJSON)
-    console.timeEnd('账单导入耗时')
-    return
-  }
-
-  const emlPath = await input({
-    message: '请输入账单eml文件路径',
-  })
-
+async function importByBank(bank: Bank, emlPath: string) {
   console.time('账单导入耗时')
   if (bank === '农业银行') {
     await importABCEml(emlPath)
@@ -188,8 +174,48 @@ export async function importBankEML() {
     await importBOSCEml(emlPath)
   } else if (bank === '中信银行') {
     await importCITICEml(emlPath)
+  } else if (bank === '南京银行') {
+    await importNJCBEml(emlPath)
   } else {
     console.log('暂不支持该银行')
   }
   console.timeEnd('账单导入耗时')
+}
+
+export async function importBankEML() {
+  const type = await select({
+    message: '请选择导入数据类型',
+    choices: ['eml（邮件)', 'json（宁波银行）'],
+  })
+  if (type === 'json（宁波银行）') {
+    console.time('账单导入耗时')
+    const nbcbJSON = await input({
+      message: '请输入宁波银行账单页面提取JSON',
+    })
+    await parseNBCBWebBills(nbcbJSON)
+    console.timeEnd('账单导入耗时')
+    return
+  }
+  let emlPath = await input({
+    message: '请输入账单eml文件路径',
+  })
+  emlPath = emlPath.replaceAll('\'', '')
+  const filename = path.basename(emlPath)
+  const detectedBank = SUPPORTED_BANKS.find(name => filename.includes(name))
+  if (detectedBank) {
+    const check = await confirm({
+      message: `文件名显示该邮件属于${detectedBank}，是否正确？`,
+      default: true,
+    })
+    if (check) {
+      return await importByBank(detectedBank, emlPath)
+    }
+  }
+
+  const bank = await select({
+    message: '请选择银行',
+    choices: SUPPORTED_BANKS,
+  })
+
+  await importByBank(bank, emlPath)
 }

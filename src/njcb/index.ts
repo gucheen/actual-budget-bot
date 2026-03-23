@@ -9,11 +9,12 @@ import type { BankTransaction } from '../eml-parser'
 import { select, input } from '@inquirer/prompts'
 import { importBills } from '../bank-import.ts'
 import { dealReconcilResults } from '../import.ts'
+import { chunkArray } from '../utils.ts'
 
 dayjs.extend(customParseFormat)
 
-// 上海银行电子邮件账单 eml 解析
-export async function parseBOSCEml(emlfile: string) {
+// 南京银行电子邮件账单 eml 解析
+export async function parseNJCBEml(emlfile: string) {
   try {
     await fs.access(emlfile)
   } catch (error) {
@@ -27,41 +28,29 @@ export async function parseBOSCEml(emlfile: string) {
 
   if (emlJson.html) {
     let html = emlJson.html
-    html = html.replace('<meta content="text/html; charset=gb2312" http-equiv="Content-Type" />', '<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />')
+    html = html.replace('<meta http-equiv="Content-Type" content="text/html; charset=gb2312">', '<meta http-equiv="Content-Type" content="text/html; charset=utf8">')
     const browser = new Browser()
     const page = browser.newPage()
     page.content = html
     const content = page.mainFrame.document.body.textContent
-    const texts = content.split('\n').map(str => str.trim()).filter(str => str.length > 0 && str !== '</tr loop2>')
+    const texts = content.split('\n').map(str => str.trim()).filter(str => str.length > 0)
     await browser.close()
   
-    const transactionIndex = texts.indexOf('人民币账户') + 4
-    const transactionEndIndex = texts.indexOf('本期余额')
+    const transactionIndex = texts.indexOf('交易日') + 5
+    const transactionEndIndex = texts.indexOf('★ 上述交易摘要中的商户名称仅供参考，如与签购单不符，请以签购单为准。')
 
     const originalLines = texts.slice(transactionIndex, transactionEndIndex)
-    const originalTransactionData: string[][] = originalLines.reduce((arr, str, index, thisArr) => {
-      if (/^\d{4}年\d{2}月\d{2}日$/.test(str) && /^\d{4}年\d{2}月\d{2}日$/.test(thisArr[index + 1])) {
-        // 当前元素是日期，后一个元素是日期
-        arr.push([str])
-        return arr
-      }
-      arr.at(arr.length - 1)?.push(str)
-      return arr
-    }, [] as string[][])
+    const originalTransactionData: string[][] = chunkArray(originalLines, 5)
 
     /**
-     * 交易日	记账日 交易描述 交易金额 卡号后四位
+     * 交易日	记账日	交易摘要	人民币金额	卡号末四位
      */
 
     const transactionsOfBank: BankTransaction[] = originalTransactionData.map(transaction => {
       const [date, , summary, originalAmount, card] = transaction
-      const sign = originalAmount.charAt(originalAmount.length - 1)
-      let amount = Number(originalAmount.substring(0, originalAmount.length - 1))
-      if (sign === '+') {
-        amount = -amount
-      }
+      let amount = -Number(originalAmount.substring(0, originalAmount.length - 1))
       return {
-        date: dayjs(date, 'YYYY年MM月DD日').format('YYYY-MM-DD'),
+        date: dayjs(date, 'YYYY/MM/DD').format('YYYY-MM-DD'),
         card,
         summary,
         amount,
@@ -83,11 +72,11 @@ export async function parseBOSCEml(emlfile: string) {
   }
 }
 
-// 上海银行电子邮件账单导入
-export async function importBOSCEml(emlFile: string) {
+// 南京银行电子邮件账单导入
+export async function importNJCBEml(emlFile: string) {
   const {
     transactionsOfBank,
-  } = await parseBOSCEml(emlFile)
+  } = await parseNJCBEml(emlFile)
   console.log(transactionsOfBank)
   const cardGroups = Object.groupBy(transactionsOfBank, (el: any) => el.card)
 
