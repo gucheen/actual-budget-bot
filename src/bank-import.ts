@@ -13,6 +13,7 @@ import { importBOSCEml } from './bosc/index.ts'
 import { importCITICEml } from './citic/index.ts'
 import path from 'node:path'
 import { importNJCBEml } from './njcb/index.ts'
+import { importCZBEml } from './czb/index.ts'
 
 dayjs.extend(customParseFormat)
 
@@ -155,7 +156,7 @@ async function importBOCOMEml(emlFile: string) {
   await actualApi.shutdown()
 }
 
-const SUPPORTED_BANKS = ['农业银行', '招商银行', '交通银行', '宁波银行', '建设银行', '工商银行', '上海银行', '中信银行', '南京银行'] as const
+const SUPPORTED_BANKS = ['农业银行', '招商银行', '交通银行', '宁波银行', '建设银行', '工商银行', '上海银行', '中信银行', '南京银行', '浙商银行'] as const
 type Bank = typeof SUPPORTED_BANKS[number]
 
 async function importByBank(bank: Bank, emlPath: string) {
@@ -176,6 +177,8 @@ async function importByBank(bank: Bank, emlPath: string) {
     await importCITICEml(emlPath)
   } else if (bank === '南京银行') {
     await importNJCBEml(emlPath)
+  } else if (bank === '浙商银行') {
+    await importCZBEml(emlPath)
   } else {
     console.log('暂不支持该银行')
   }
